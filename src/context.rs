@@ -12,6 +12,11 @@ pub enum Setting {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Menu {
     Home,
+    Explore,
+    Chats,
+    Contacts,
+    Notifications,
+    Profile,
     Setting(Setting),
 }
 

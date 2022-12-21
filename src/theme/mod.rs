@@ -4,7 +4,7 @@
 pub mod color;
 
 /* #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum ThemeType {
+enum Theme {
     Light,
     Dark,
 } */

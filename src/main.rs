@@ -15,7 +15,9 @@ use self::layout::{
 
 pub fn main() -> iced::Result {
     env_logger::init();
-    App::run(Settings::default())
+    let mut settings = Settings::default();
+    settings.window.min_size = Some((600, 600));
+    App::run(settings)
 }
 
 struct App {
@@ -28,6 +30,11 @@ pub fn new_state(context: &Context) -> Box<dyn State> {
         Stage::Login => LoginState::new().into(),
         Stage::Menu(menu) => match menu {
             Menu::Home => HomeState::new().into(),
+            Menu::Explore => todo!(),
+            Menu::Chats => todo!(),
+            Menu::Contacts => todo!(),
+            Menu::Notifications => todo!(),
+            Menu::Profile => todo!(),
             Menu::Setting(s) => match s {
                 Setting::Main => todo!(),
                 Setting::Relays => RelaysState::new().into(),

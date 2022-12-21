@@ -1688,6 +1688,7 @@ dependencies = [
 [[package]]
 name = "nostr"
 version = "0.8.0"
+source = "git+https://github.com/yukibtc/nostr-rs-sdk?rev=ef46c9242e1c92dc6e41e649824dcbffc9fad976#ef46c9242e1c92dc6e41e649824dcbffc9fad976"
 dependencies = [
  "aes",
  "base64",
@@ -1718,6 +1719,7 @@ dependencies = [
 [[package]]
 name = "nostr-sdk"
 version = "0.8.2"
+source = "git+https://github.com/yukibtc/nostr-rs-sdk?rev=ef46c9242e1c92dc6e41e649824dcbffc9fad976#ef46c9242e1c92dc6e41e649824dcbffc9fad976"
 dependencies = [
  "futures-util",
  "log",

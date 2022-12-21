@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::widget::{Column, Container, Row};
+use iced::widget::{Column, Container, Row, Rule};
 use iced::{Element, Length};
 
 use crate::{Context, Message};
@@ -31,6 +31,7 @@ impl Dashboard {
                             .width(Length::Shrink)
                             .height(Length::Fill),
                     )
+                    .push(Rule::vertical(1))
                     .push(
                         Container::new(content)
                             .width(Length::Fill)
