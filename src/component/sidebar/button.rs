@@ -1,8 +1,8 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::theme;
-use iced::widget::{button, Button, Container};
+use iced::widget::{button, Button, Container, Row, Text};
+use iced::{theme, Alignment};
 use iced::{Background, Length, Theme, Vector};
 
 use crate::context::{Context, Stage};
@@ -57,14 +57,15 @@ impl From<TransparentStyle> for theme::Button {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Clone)]
 pub struct SidebarButton<'a> {
     text: &'a str,
+    icon: Text<'a>,
 }
 
 impl<'a> SidebarButton<'a> {
-    pub fn new(text: &'a str) -> Self {
-        Self { text }
+    pub fn new(text: &'a str, icon: Text<'a>) -> Self {
+        Self { text, icon }
     }
 
     pub fn view(&self, ctx: &Context, stage: Stage) -> Container<'a, Message> {
@@ -74,9 +75,20 @@ impl<'a> SidebarButton<'a> {
             TransparentStyle.into()
         };
 
+        let content = Container::new(
+            Row::new()
+                .push(self.icon.clone())
+                .push(Text::new(self.text))
+                .spacing(10)
+                .width(iced::Length::Fill)
+                .align_items(Alignment::Center),
+        )
+        .width(Length::Fill)
+        .center_x()
+        .padding(5);
+
         Container::new(
-            Button::new(self.text)
-                .padding(10)
+            Button::new(content)
                 .on_press(Message::SetStage(stage))
                 .width(Length::Units(BUTTON_SIZE))
                 .style(style),

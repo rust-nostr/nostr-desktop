@@ -7,23 +7,34 @@ use iced::Length;
 mod button;
 
 use self::button::{SidebarButton, BUTTON_SIZE};
+use super::icon::Icon;
 use crate::context::{Menu, Setting, Stage};
+use crate::theme::icon::{CHAT, CONTACT, EXPLORE, HOME, NOTIFICATION, PERSON, SETTING};
 use crate::{Context, Message};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct Sidebar;
 
 impl Sidebar {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn view<'a>(&self, ctx: &Context) -> Container<'a, Message> {
-        let home_button = SidebarButton::new("Home").view(ctx, Stage::Menu(Menu::Home));
-        let explore_button = SidebarButton::new("Explore").view(ctx, Stage::Menu(Menu::Explore));
-        let chat_button = SidebarButton::new("Chats").view(ctx, Stage::Menu(Menu::Chats));
-        let contacts_button = SidebarButton::new("Contacts").view(ctx, Stage::Menu(Menu::Contacts));
-        let notifications_button =
-            SidebarButton::new("Notifications").view(ctx, Stage::Menu(Menu::Notifications));
-        let profile_button = SidebarButton::new("Profile").view(ctx, Stage::Menu(Menu::Profile));
-        let setting_button =
-            SidebarButton::new("Settings").view(ctx, Stage::Menu(Menu::Setting(Setting::Main)));
+        let home_button =
+            SidebarButton::new("Home", Icon::view(&HOME)).view(ctx, Stage::Menu(Menu::Home));
+        let explore_button = SidebarButton::new("Explore", Icon::view(&EXPLORE))
+            .view(ctx, Stage::Menu(Menu::Explore));
+        let chat_button =
+            SidebarButton::new("Chats", Icon::view(&CHAT)).view(ctx, Stage::Menu(Menu::Chats));
+        let contacts_button = SidebarButton::new("Contacts", Icon::view(&CONTACT))
+            .view(ctx, Stage::Menu(Menu::Contacts));
+        let notifications_button = SidebarButton::new("Notifications", Icon::view(&NOTIFICATION))
+            .view(ctx, Stage::Menu(Menu::Notifications));
+        let profile_button = SidebarButton::new("Profile", Icon::view(&PERSON))
+            .view(ctx, Stage::Menu(Menu::Profile));
+        let setting_button = SidebarButton::new("Settings", Icon::view(&SETTING))
+            .view(ctx, Stage::Menu(Menu::Setting(Setting::Main)));
 
         let version = Text::new(format!(
             "{} v{}",

@@ -3,4 +3,5 @@
 
 pub mod button;
 pub mod dashboard;
+pub mod icon;
 pub mod sidebar;

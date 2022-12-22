@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 pub mod color;
+pub mod icon;
 
 /* #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Theme {

@@ -8,10 +8,8 @@ use crate::{Context, Message};
 
 use super::sidebar::Sidebar;
 
-#[derive(Debug, Clone, Default)]
-pub struct Dashboard {
-    sidebar: Sidebar,
-}
+#[derive(Clone, Default)]
+pub struct Dashboard;
 
 impl Dashboard {
     pub fn new() -> Self {
@@ -26,7 +24,7 @@ impl Dashboard {
             .push(
                 Row::new()
                     .push(
-                        self.sidebar
+                        Sidebar::new()
                             .view(ctx)
                             .width(Length::Shrink)
                             .height(Length::Fill),
