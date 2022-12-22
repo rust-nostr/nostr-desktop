@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 pub mod button;
-pub mod dashboard;
+mod dashboard;
 pub mod icon;
-pub mod sidebar;
+
+pub use self::dashboard::Dashboard;

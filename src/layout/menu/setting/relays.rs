@@ -4,7 +4,7 @@
 use iced::widget::{column, row, text, Button, Column, Row, Text, TextInput};
 use iced::{Command, Element};
 
-use crate::component::dashboard::Dashboard;
+use crate::component::Dashboard;
 use crate::context::{Context, Stage};
 use crate::layout::State;
 use crate::Message;

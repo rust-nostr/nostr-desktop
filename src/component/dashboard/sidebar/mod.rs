@@ -7,7 +7,7 @@ use iced::Length;
 mod button;
 
 use self::button::{SidebarButton, BUTTON_SIZE};
-use super::icon::Icon;
+use crate::component::icon::Icon;
 use crate::context::{Menu, Setting, Stage};
 use crate::theme::icon::{CHAT, CONTACT, EXPLORE, HOME, NOTIFICATION, PERSON, SETTING};
 use crate::{Context, Message};

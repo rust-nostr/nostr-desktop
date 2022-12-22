@@ -6,7 +6,11 @@ use iced::{Element, Length};
 
 use crate::{Context, Message};
 
-use super::sidebar::Sidebar;
+mod navbar;
+mod sidebar;
+
+use self::navbar::Navbar;
+use self::sidebar::Sidebar;
 
 #[derive(Clone, Default)]
 pub struct Dashboard;
@@ -21,6 +25,7 @@ impl Dashboard {
         T: Into<Element<'a, Message>>,
     {
         Column::new()
+            .push(Navbar::view())
             .push(
                 Row::new()
                     .push(
