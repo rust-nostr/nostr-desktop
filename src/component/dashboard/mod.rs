@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::widget::{Column, Container, Row, Rule};
+use iced::widget::{Column, Container, Row, Rule, Scrollable};
 use iced::{Element, Length};
 
 use crate::{Context, Message};
@@ -33,7 +33,7 @@ impl Dashboard {
                     )
                     .push(Rule::vertical(1))
                     .push(
-                        Container::new(content.spacing(20).padding(20))
+                        Container::new(Scrollable::new(content.spacing(20).padding(20)))
                             //.max_width(600)
                             .width(Length::Fill)
                             .height(Length::Fill)

@@ -11,12 +11,14 @@ keywords = ["nostr", "nostr-sdk", "client", "gui"]
 categories = ["GUI"]
 
 [dependencies]
+async-stream = "0.3.3"
 env_logger = "0.8.2"
 iced = { version = "0.6", default-features = false, features = ["tokio", "wgpu"] }
-iced_lazy = "0.3.0"
-iced_native = "0.7.0"
-# nostr-sdk = { git = "https://github.com/yukibtc/nostr-rs-sdk", rev = "c557101eacafa1c10f57b41d30e26ea6ca72d9ef", features = ["blocking"] }
-nostr-sdk = { path = "../nostr-rs-sdk/crates/nostr-sdk", features = ["blocking"] }
+iced_futures = "0.5.1"
+nostr-sdk = { git = "https://github.com/yukibtc/nostr-rs-sdk", rev = "8cba0ac22974472eb5b378bda37566eb52336d26", features = ["blocking"] }
+# nostr-sdk = { path = "../nostr-rs-sdk/crates/nostr-sdk", features = ["blocking"] }
+# notify-rust = "4.6.0"
+tokio = { version = "1", features = ["full"] }
 
 [profile.release]
 lto = true

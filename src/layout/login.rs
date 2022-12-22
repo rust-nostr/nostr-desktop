@@ -62,6 +62,7 @@ impl State for LoginState {
         let text_input = text_input("Secret key", &self.secret_key, |s| {
             Message::Login(LoginMessage::SecretKeyChanged(s))
         })
+        .on_submit(Message::Login(LoginMessage::ButtonPressed))
         .padding(10)
         .size(20);
 

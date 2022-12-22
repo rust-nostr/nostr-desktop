@@ -1,16 +1,13 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::time::Duration;
-
-use iced::{
-    clipboard, executor, time, Application, Command, Element, Settings, Subscription, Theme,
-};
+use iced::{clipboard, executor, Application, Command, Element, Settings, Subscription, Theme};
 
 mod component;
 mod context;
 mod layout;
 mod message;
+mod nostr;
 mod theme;
 
 use self::context::{Context, Menu, Setting, Stage};
@@ -19,6 +16,7 @@ use self::layout::{
     ProfileState, RelaysState, SettingState, State,
 };
 use self::message::Message;
+use self::nostr::sync::NostrSync;
 
 pub fn main() -> iced::Result {
     env_logger::init();
@@ -78,10 +76,12 @@ impl Application for App {
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
-        Subscription::batch(vec![
-            time::every(Duration::from_secs(30)).map(|_| Message::Tick),
-            self.state.subscription(),
-        ])
+        if let Some(client) = self.context.client.clone() {
+            let sync = NostrSync::subscription(client).map(Message::Sync);
+            Subscription::batch(vec![sync, self.state.subscription()])
+        } else {
+            Subscription::batch(vec![self.state.subscription()])
+        }
     }
 
     fn update(&mut self, message: Message) -> Command<Self::Message> {
