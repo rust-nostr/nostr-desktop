@@ -1,17 +1,24 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::{clipboard, executor, Application, Command, Element, Settings, Theme};
+use std::time::Duration;
+
+use iced::{
+    clipboard, executor, time, Application, Command, Element, Settings, Subscription, Theme,
+};
 
 mod component;
 mod context;
 mod layout;
+mod message;
 mod theme;
 
 use self::context::{Context, Menu, Setting, Stage};
 use self::layout::{
-    HomeMessage, HomeState, LoginMessage, LoginState, RelaysMessage, RelaysState, State,
+    ChatState, ContactsState, ExploreState, HomeState, LoginState, NotificationsState,
+    ProfileState, RelaysState, SettingState, State,
 };
+use self::message::Message;
 
 pub fn main() -> iced::Result {
     env_logger::init();
@@ -28,29 +35,20 @@ struct App {
 pub fn new_state(context: &Context) -> Box<dyn State> {
     match &context.stage {
         Stage::Login => LoginState::new().into(),
+        Stage::Register => todo!(),
         Stage::Menu(menu) => match menu {
             Menu::Home => HomeState::new().into(),
-            Menu::Explore => todo!(),
-            Menu::Chats => todo!(),
-            Menu::Contacts => todo!(),
-            Menu::Notifications => todo!(),
-            Menu::Profile => todo!(),
+            Menu::Explore => ExploreState::new().into(),
+            Menu::Chats => ChatState::new().into(),
+            Menu::Contacts => ContactsState::new().into(),
+            Menu::Notifications => NotificationsState::new().into(),
+            Menu::Profile => ProfileState::new().into(),
             Menu::Setting(s) => match s {
-                Setting::Main => todo!(),
+                Setting::Main => SettingState::new().into(),
                 Setting::Relays => RelaysState::new().into(),
             },
         },
-        _ => todo!(),
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum Message {
-    SetStage(Stage),
-    Clipboard(String),
-    Login(LoginMessage),
-    Home(HomeMessage),
-    Relays(RelaysMessage),
 }
 
 impl Application for App {
@@ -77,6 +75,13 @@ impl Application for App {
 
     fn theme(&self) -> Theme {
         Theme::Dark
+    }
+
+    fn subscription(&self) -> iced::Subscription<Self::Message> {
+        Subscription::batch(vec![
+            time::every(Duration::from_secs(30)).map(|_| Message::Tick),
+            self.state.subscription(),
+        ])
     }
 
     fn update(&mut self, message: Message) -> Command<Self::Message> {

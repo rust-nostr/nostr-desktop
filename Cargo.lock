@@ -1231,6 +1231,7 @@ checksum = "3cc3a9fd79b857228dde2a3e923a04ade4095abeda33248c6230e8c909749366"
 dependencies = [
  "futures",
  "log",
+ "tokio",
  "wasm-bindgen-futures",
  "wasm-timer",
 ]
@@ -1688,7 +1689,6 @@ dependencies = [
 [[package]]
 name = "nostr"
 version = "0.8.0"
-source = "git+https://github.com/yukibtc/nostr-rs-sdk?rev=ef46c9242e1c92dc6e41e649824dcbffc9fad976#ef46c9242e1c92dc6e41e649824dcbffc9fad976"
 dependencies = [
  "aes",
  "base64",
@@ -1719,7 +1719,6 @@ dependencies = [
 [[package]]
 name = "nostr-sdk"
 version = "0.8.2"
-source = "git+https://github.com/yukibtc/nostr-rs-sdk?rev=ef46c9242e1c92dc6e41e649824dcbffc9fad976#ef46c9242e1c92dc6e41e649824dcbffc9fad976"
 dependencies = [
  "futures-util",
  "log",

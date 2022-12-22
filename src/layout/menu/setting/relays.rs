@@ -4,10 +4,11 @@
 use iced::widget::{column, row, text, Button, Column, Row, Text, TextInput};
 use iced::{Command, Element};
 
+use super::SettingMessage;
 use crate::component::Dashboard;
 use crate::context::{Context, Stage};
 use crate::layout::State;
-use crate::Message;
+use crate::message::{MenuMessage, Message};
 
 #[derive(Debug, Clone)]
 pub enum RelaysMessage {
@@ -40,18 +41,24 @@ impl State for RelaysState {
 
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
         if let Some(client) = ctx.client.as_mut() {
-            if let Message::Relays(msg) = message {
+            if let Message::Menu(MenuMessage::Setting(SettingMessage::Relays(msg))) = message {
                 match msg {
                     RelaysMessage::RelayUrlChanged(url) => self.relay_url = url,
                     RelaysMessage::AddRelay => match client.add_relay(&self.relay_url, None) {
                         Ok(_) => {
                             if let Err(e) = client.connect() {
                                 self.error = Some(e.to_string())
+                            } else {
+                                self.relay_url.clear();
+                                self.error = None;
                             }
                         }
                         Err(e) => self.error = Some(e.to_string()),
                     },
-                    RelaysMessage::RemoveRelay(_url) => {}
+                    RelaysMessage::RemoveRelay(url) => match client.remove_relay(url) {
+                        Ok(_) => self.error = None,
+                        Err(e) => self.error = Some(e.to_string()),
+                    },
                 }
             }
             Command::none()
@@ -64,20 +71,37 @@ impl State for RelaysState {
         let heading = Text::new("Relays").size(30);
 
         let text_input = TextInput::new("Relay url", &self.relay_url, |s| {
-            Message::Relays(RelaysMessage::RelayUrlChanged(s))
+            Message::Menu(MenuMessage::Setting(SettingMessage::Relays(
+                RelaysMessage::RelayUrlChanged(s),
+            )))
         })
         .padding(10)
         .size(20);
 
         let button = Button::new("Add")
             .padding(10)
-            .on_press(Message::Relays(RelaysMessage::AddRelay));
+            .on_press(Message::Menu(MenuMessage::Setting(SettingMessage::Relays(
+                RelaysMessage::AddRelay,
+            ))));
 
         let relays = if let Some(client) = ctx.client.as_ref() {
             let mut col_recipients = Column::new().push(Text::new("Relays:")).spacing(10);
 
-            for (url, _) in client.relays() {
-                col_recipients = col_recipients.push(Row::new().push(Text::new(url.to_string())));
+            for (url, relay) in client.relays() {
+                let button = Button::new("Remove")
+                    .padding(10)
+                    .style(iced::theme::Button::Destructive)
+                    .on_press(Message::Menu(MenuMessage::Setting(SettingMessage::Relays(
+                        RelaysMessage::RemoveRelay(url.to_string()),
+                    ))));
+
+                let status = relay.status_blocking();
+                col_recipients = col_recipients.push(
+                    Row::new()
+                        .push(Text::new(url.to_string()))
+                        .push(button)
+                        .push(Text::new(status.to_string())),
+                );
             }
 
             col_recipients
@@ -94,10 +118,7 @@ impl State for RelaysState {
                 row![]
             },
             relays
-        ]
-        .spacing(20)
-        .padding(20)
-        .max_width(600);
+        ];
 
         Dashboard::new().view(ctx, content)
     }

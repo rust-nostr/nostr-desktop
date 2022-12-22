@@ -6,8 +6,8 @@ use iced::{theme, Alignment};
 use iced::{Background, Length, Theme, Vector};
 
 use crate::context::{Context, Stage};
+use crate::message::Message;
 use crate::theme::color::{PRIMARY, TRANSPARENT, WHITE};
-use crate::Message;
 
 pub const BUTTON_SIZE: u16 = 180;
 

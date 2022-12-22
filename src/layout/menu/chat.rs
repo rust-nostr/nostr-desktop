@@ -10,25 +10,25 @@ use crate::layout::State;
 use crate::message::{MenuMessage, Message};
 
 #[derive(Debug, Clone)]
-pub enum HomeMessage {}
+pub enum ChatMessage {}
 
 #[derive(Debug, Default)]
-pub struct HomeState {}
+pub struct ChatState {}
 
-impl HomeState {
+impl ChatState {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl State for HomeState {
+impl State for ChatState {
     fn title(&self) -> String {
-        String::from("Nostr - Home")
+        String::from("Nostr - Chat")
     }
 
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
         if let Some(_client) = ctx.client.as_mut() {
-            if let Message::Menu(MenuMessage::Home(_msg)) = message {
+            if let Message::Menu(MenuMessage::Chat(_msg)) = message {
                 Command::none()
             } else {
                 Command::none()
@@ -44,8 +44,8 @@ impl State for HomeState {
     }
 }
 
-impl From<HomeState> for Box<dyn State> {
-    fn from(s: HomeState) -> Box<dyn State> {
+impl From<ChatState> for Box<dyn State> {
+    fn from(s: ChatState) -> Box<dyn State> {
         Box::new(s)
     }
 }

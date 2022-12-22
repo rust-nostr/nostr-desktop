@@ -20,10 +20,7 @@ impl Dashboard {
         Self::default()
     }
 
-    pub fn view<'a, T>(&self, ctx: &Context, content: T) -> Element<'a, Message>
-    where
-        T: Into<Element<'a, Message>>,
-    {
+    pub fn view<'a>(&self, ctx: &Context, content: Column<'a, Message>) -> Element<'a, Message> {
         Column::new()
             .push(Navbar::view())
             .push(
@@ -36,12 +33,14 @@ impl Dashboard {
                     )
                     .push(Rule::vertical(1))
                     .push(
-                        Container::new(content)
+                        Container::new(content.spacing(20).padding(20))
+                            //.max_width(600)
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .center_x(),
                     ),
             )
+            //.max_width(1200)
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .into()

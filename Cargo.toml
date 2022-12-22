@@ -12,10 +12,11 @@ categories = ["GUI"]
 
 [dependencies]
 env_logger = "0.8.2"
-iced = { version = "0.6", default-features = false, features = ["wgpu"] }
+iced = { version = "0.6", default-features = false, features = ["tokio", "wgpu"] }
 iced_lazy = "0.3.0"
 iced_native = "0.7.0"
-nostr-sdk = { git = "https://github.com/yukibtc/nostr-rs-sdk", rev = "ef46c9242e1c92dc6e41e649824dcbffc9fad976", features = ["blocking"] }
+# nostr-sdk = { git = "https://github.com/yukibtc/nostr-rs-sdk", rev = "c557101eacafa1c10f57b41d30e26ea6ca72d9ef", features = ["blocking"] }
+nostr-sdk = { path = "../nostr-rs-sdk/crates/nostr-sdk", features = ["blocking"] }
 
 [profile.release]
 lto = true

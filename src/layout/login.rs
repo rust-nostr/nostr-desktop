@@ -1,16 +1,14 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::str::FromStr;
-
 use iced::widget::{button, column, container, row, text, text_input};
 use iced::{Command, Element, Length};
 use nostr_sdk::client::blocking::Client;
-use nostr_sdk::nostr::key::{FromBech32, Keys};
+use nostr_sdk::nostr::key::{FromSkStr, Keys};
 
 use crate::context::{Context, Menu, Stage};
 use crate::layout::State;
-use crate::Message;
+use crate::message::Message;
 
 #[derive(Debug, Clone)]
 pub enum LoginMessage {
@@ -44,7 +42,7 @@ impl State for LoginState {
         if let Message::Login(msg) = message {
             match msg {
                 LoginMessage::SecretKeyChanged(secret_key) => self.secret_key = secret_key,
-                LoginMessage::ButtonPressed => match Keys::from_str(&self.secret_key) {
+                LoginMessage::ButtonPressed => match Keys::from_sk_str(&self.secret_key) {
                     Ok(keys) => {
                         self.clear();
                         ctx.set_client(Some(Client::new(&keys)));
@@ -52,16 +50,7 @@ impl State for LoginState {
                             Message::SetStage(Stage::Menu(Menu::Home))
                         });
                     }
-                    Err(_) => match Keys::from_bech32(&self.secret_key) {
-                        Ok(keys) => {
-                            self.clear();
-                            ctx.set_client(Some(Client::new(&keys)));
-                            return Command::perform(async move {}, |_| {
-                                Message::SetStage(Stage::Menu(Menu::Home))
-                            });
-                        }
-                        Err(_) => self.error = Some("Invalid secret key".to_string()),
-                    },
+                    Err(e) => self.error = Some(e.to_string()),
                 },
             }
         };
