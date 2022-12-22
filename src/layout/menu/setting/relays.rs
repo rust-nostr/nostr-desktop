@@ -5,15 +5,16 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use iced::widget::{column, row, text, Button, Column, Row, Text, TextInput};
-use iced::{time, Command, Element, Subscription};
+use iced::{time, Alignment, Command, Element, Subscription};
 use nostr_sdk::nostr::url::Url;
-use nostr_sdk::Relay;
+use nostr_sdk::{Relay, RelayStatus};
 
 use super::SettingMessage;
-use crate::component::Dashboard;
+use crate::component::{Circle, Dashboard};
 use crate::context::{Context, Stage};
 use crate::layout::State;
 use crate::message::{MenuMessage, Message};
+use crate::theme::color::{GREEN, RED, YELLOW};
 
 #[derive(Debug, Clone)]
 pub enum RelaysMessage {
@@ -111,12 +112,21 @@ impl State for RelaysState {
                     RelaysMessage::RemoveRelay(url.to_string()),
                 ))));
 
-            let status = relay.status_blocking();
+            let status = match relay.status_blocking() {
+                RelayStatus::Connected => Circle::new(7.0).color(GREEN),
+                RelayStatus::Initialized | RelayStatus::Connecting => {
+                    Circle::new(7.0).color(YELLOW)
+                }
+                RelayStatus::Disconnected | RelayStatus::Terminated => Circle::new(7.0).color(RED),
+            };
+
             relays = relays.push(
                 Row::new()
+                    .push(status)
                     .push(Text::new(url.to_string()))
                     .push(button)
-                    .push(Text::new(status.to_string())),
+                    .spacing(20)
+                    .align_items(Alignment::Center),
             );
         }
 
