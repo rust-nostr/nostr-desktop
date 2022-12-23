@@ -3,7 +3,7 @@
 
 use iced::widget::{button, column, container, row, text, text_input};
 use iced::{Command, Element, Length};
-use nostr_sdk::client::blocking::Client;
+use nostr_sdk::blocking::Client;
 use nostr_sdk::nostr::key::{FromSkStr, Keys};
 
 use crate::message::Message;
@@ -44,6 +44,7 @@ impl State for LoginState {
     fn title(&self) -> String {
         String::from("Nostr - Login")
     }
+
     fn update(&mut self, _ctx: &mut Context, message: Message) -> Command<Message> {
         if let Message::Login(msg) = message {
             match msg {
