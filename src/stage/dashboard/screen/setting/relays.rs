@@ -1,7 +1,6 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::time::Duration;
 
@@ -9,7 +8,7 @@ use iced::widget::{text, Button, Checkbox, Column, Row, Text, TextInput};
 use iced::{time, Alignment, Command, Element, Length, Subscription};
 use nostr_sdk::nostr::url::Url;
 use nostr_sdk::Client;
-use nostr_sdk::{Relay, RelayStatus};
+use nostr_sdk::RelayStatus;
 
 use super::SettingMessage;
 use crate::component::{Circle, Icon};
@@ -27,15 +26,17 @@ pub enum RelaysMessage {
     ProxyToggled(bool),
     AddRelay,
     RemoveRelay(String),
-    SetRelays(HashMap<Url, (Relay, RelayStatus)>),
+    UpdateRelays,
+    SetRelays(Vec<(RelayStatus, Url, Option<SocketAddr>)>),
 }
 
 #[derive(Debug, Default)]
 pub struct RelaysState {
+    loaded: bool,
     relay_url: String,
     proxy: String,
     use_proxy: bool,
-    relays: HashMap<Url, (Relay, RelayStatus)>,
+    relays: Vec<(RelayStatus, Url, Option<SocketAddr>)>,
     error: Option<String>,
 }
 
@@ -45,10 +46,11 @@ impl RelaysState {
     }
 
     pub fn clear(&mut self) {
+        self.loaded = false;
         self.relay_url = String::new();
         self.proxy = String::new();
         self.use_proxy = false;
-        self.relays = HashMap::new();
+        self.relays = Vec::new();
         self.error = None;
     }
 
@@ -74,8 +76,13 @@ impl State for RelaysState {
 
     fn subscription(&self) -> Subscription<Message> {
         Subscription::batch(vec![
-            time::every(Duration::from_secs(7)).map(|_| Message::Tick)
+            time::every(Duration::from_secs(10)).map(|_| RelaysMessage::UpdateRelays.into())
         ])
+    }
+
+    fn load(&mut self, _ctx: &Context) -> Command<Message> {
+        self.loaded = true;
+        Command::perform(async {}, |_| RelaysMessage::UpdateRelays.into())
     }
 
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
@@ -96,30 +103,38 @@ impl State for RelaysState {
                     } else {
                         RUNTIME.block_on(async { self.add_relay(&client, None).await });
                     };
+                    return self.load(ctx);
                 }
-                RelaysMessage::RemoveRelay(url) => RUNTIME.block_on(async {
-                    match client.remove_relay(url).await {
-                        Ok(_) => self.error = None,
-                        Err(e) => self.error = Some(e.to_string()),
-                    }
-                }),
+                RelaysMessage::RemoveRelay(url) => {
+                    return RUNTIME.block_on(async {
+                        match client.remove_relay(url).await {
+                            Ok(_) => self.error = None,
+                            Err(e) => self.error = Some(e.to_string()),
+                        }
+                        self.load(ctx)
+                    })
+                }
                 RelaysMessage::SetRelays(relays) => self.relays = relays,
+                RelaysMessage::UpdateRelays => {
+                    return Command::perform(
+                        async move {
+                            let mut relays = Vec::new();
+                            for (url, relay) in client.relays().await.into_iter() {
+                                relays.push((relay.status().await, url, relay.proxy()));
+                            }
+                            relays
+                        },
+                        |relays| RelaysMessage::SetRelays(relays).into(),
+                    )
+                }
             }
         }
-        Command::perform(
-            async move {
-                let mut relays = HashMap::new();
-                for (url, relay) in client.relays().await.into_iter() {
-                    relays.insert(url, (relay.clone(), relay.status().await));
-                }
-                relays
-            },
-            |relays| {
-                Message::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(
-                    RelaysMessage::SetRelays(relays),
-                )))
-            },
-        )
+
+        if self.loaded {
+            Command::none()
+        } else {
+            self.load(ctx)
+        }
     }
 
     fn view(&self, ctx: &Context) -> Element<Message> {
@@ -161,7 +176,7 @@ impl State for RelaysState {
             relays = relays.push(Text::new("Relays:"));
         }
 
-        for (url, (relay, status)) in self.relays.iter() {
+        for (status, url, proxy) in self.relays.iter() {
             let button = Button::new(Icon::view(&TRASH))
                 .padding(10)
                 .style(iced::theme::Button::Destructive)
@@ -180,7 +195,7 @@ impl State for RelaysState {
             let info = Row::new()
                 .push(status)
                 .push(Text::new(url.to_string()))
-                .push(Text::new(format!("Proxy: {}", relay.proxy().is_some())))
+                .push(Text::new(format!("Proxy: {}", proxy.is_some())))
                 .spacing(20)
                 .align_items(Alignment::Center)
                 .width(Length::Fill);
@@ -219,5 +234,11 @@ impl State for RelaysState {
 impl From<RelaysState> for Box<dyn State> {
     fn from(s: RelaysState) -> Box<dyn State> {
         Box::new(s)
+    }
+}
+
+impl From<RelaysMessage> for Message {
+    fn from(msg: RelaysMessage) -> Self {
+        Self::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(msg)))
     }
 }

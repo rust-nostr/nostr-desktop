@@ -40,7 +40,7 @@ pub trait State {
     fn subscription(&self) -> Subscription<Message> {
         Subscription::none()
     }
-    fn load(&self, _ctx: &Context) -> Command<Message> {
+    fn load(&mut self, _ctx: &Context) -> Command<Message> {
         Command::none()
     }
 }
