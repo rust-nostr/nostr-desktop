@@ -64,7 +64,7 @@ where
             }
 
             loop {
-                std::thread::sleep(Duration::from_secs(60));
+                std::thread::sleep(Duration::from_secs(30));
 
                 if let Ok(authors) = store.get_authors() {
                     if filters.authors_metadata.authors.as_ref() != Some(&authors) {

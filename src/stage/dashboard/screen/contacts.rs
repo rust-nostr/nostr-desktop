@@ -3,9 +3,10 @@
 
 use iced::widget::{Column, Row, Text};
 use iced::{Command, Element};
-use nostr_sdk::nostr::Contact;
+use nostr_sdk::nostr::{self, Metadata};
 
 use crate::message::{DashboardMessage, Message};
+use crate::stage::dashboard::component::Contact;
 use crate::stage::dashboard::component::Dashboard;
 use crate::stage::dashboard::{Context, State};
 
@@ -14,7 +15,7 @@ pub enum ContactsMessage {}
 
 #[derive(Debug, Default)]
 pub struct ContactsState {
-    contacts: Vec<Contact>,
+    contacts: Vec<nostr::Contact>,
     error: Option<String>,
 }
 
@@ -52,23 +53,11 @@ impl State for ContactsState {
         for contact in self.contacts.iter() {
             if let Ok(profile) = ctx.store.get_profile(contact.pk) {
                 let metadata = profile.metadata;
-                let mut row = Row::new();
-
-                if let Some(name) = metadata.name {
-                    row = row.push(Text::new(name));
-                }
-
-                if let Some(display_name) = metadata.display_name {
-                    row = row.push(Text::new(display_name));
-                }
-
-                if let Some(picture) = metadata.picture {
-                    row = row.push(Text::new(picture.to_string()));
-                }
-
-                contacts = contacts.push(row);
+                contacts =
+                    contacts.push(Row::new().push(Contact::new(contact.pk, metadata).view()));
             } else {
-                contacts = contacts.push(Row::new().push(Text::new(contact.pk.to_string())));
+                contacts = contacts
+                    .push(Row::new().push(Contact::new(contact.pk, Metadata::default()).view()));
             }
         }
 

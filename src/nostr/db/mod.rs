@@ -96,7 +96,9 @@ impl Store {
     }
 
     pub fn get_contacts(&self) -> Result<Vec<Contact>> {
-        Ok(self.db.iterator_value_serialized(self.contact_cf())?)
+        let mut contacts = self.db.iterator_value_serialized(self.contact_cf())?;
+        contacts.sort();
+        Ok(contacts)
     }
 
     pub fn set_author(&self, public_key: XOnlyPublicKey) -> Result<()> {
