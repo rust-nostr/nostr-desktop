@@ -3,8 +3,8 @@
 
 use iced::widget::{button, column, container, row, text, text_input};
 use iced::{Command, Element, Length};
-use nostr_sdk::blocking::Client;
 use nostr_sdk::nostr::key::{FromSkStr, Keys};
+use nostr_sdk::Client;
 
 use crate::message::Message;
 use crate::nostr::db::Store;

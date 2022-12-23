@@ -2,6 +2,8 @@
 // Distributed under the MIT software license
 
 use iced::{executor, Application, Command, Element, Settings, Subscription, Theme};
+use once_cell::sync::Lazy;
+use tokio::runtime::Runtime;
 
 mod component;
 mod error;
@@ -12,6 +14,8 @@ mod theme;
 mod util;
 
 use self::message::Message;
+
+static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));
 
 pub fn main() -> iced::Result {
     env_logger::init();

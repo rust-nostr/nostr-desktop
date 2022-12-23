@@ -1,5 +1,5 @@
 use iced::{Command, Element, Subscription};
-use nostr_sdk::blocking::Client;
+use nostr_sdk::Client;
 
 pub mod component;
 mod context;

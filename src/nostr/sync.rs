@@ -2,17 +2,19 @@
 // Distributed under the MIT software license
 
 use std::str::FromStr;
+use std::time::Duration;
 
 use async_stream::stream;
 use iced::Subscription;
 use iced_futures::BoxStream;
-use nostr_sdk::blocking::Client;
 use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
 use nostr_sdk::nostr::{Contact, Event, Kind, KindBase, Metadata, SubscriptionFilter};
+use nostr_sdk::Client;
 use nostr_sdk::RelayPoolNotifications;
 use tokio::sync::mpsc;
 
 use crate::nostr::db::Store;
+use crate::RUNTIME;
 
 use super::db::model::Profile;
 use super::filters::Filters;
@@ -37,45 +39,55 @@ where
     fn stream(mut self: Box<Self>, _input: BoxStream<I>) -> BoxStream<Self::Output> {
         let (sender, mut receiver) = mpsc::unbounded_channel();
         let client = self.client.clone();
-        let store = self.store;
+        let store = self.store.clone();
 
-        let mut filters: Filters = Filters {
-            contact_list: SubscriptionFilter::new()
-                .author(client.keys().public_key())
-                .kind(Kind::Base(KindBase::ContactList))
-                .limit(1),
-            encrypted_dm: SubscriptionFilter::new()
-                .pubkey(client.keys().public_key())
-                .kind(Kind::Base(KindBase::EncryptedDirectMessage)),
-            authors_metadata: SubscriptionFilter::new(),
-        };
+        super::thread::spawn("filters", move || {
+            let mut filters: Filters = Filters {
+                contact_list: SubscriptionFilter::new()
+                    .author(client.keys().public_key())
+                    .kind(Kind::Base(KindBase::ContactList))
+                    .limit(1),
+                encrypted_dm: SubscriptionFilter::new()
+                    .pubkey(client.keys().public_key())
+                    .kind(Kind::Base(KindBase::EncryptedDirectMessage)),
+                authors_metadata: SubscriptionFilter::new(),
+            };
 
-        if let Ok(authors) = store.get_authors() {
-            filters.authors_metadata = SubscriptionFilter::new()
-                .authors(authors)
-                .kind(Kind::Base(KindBase::Metadata));
-        }
+            if let Ok(authors) = store.get_authors() {
+                filters.authors_metadata = SubscriptionFilter::new()
+                    .authors(authors)
+                    .kind(Kind::Base(KindBase::Metadata));
+            }
 
-        if let Err(e) = client.subscribe(filters.to_vec()) {
-            log::error!("Impossible to subscribe to events: {}", e.to_string());
-        }
+            if let Err(e) = RUNTIME.block_on(async { client.subscribe(filters.to_vec()).await }) {
+                log::error!("Impossible to subscribe to events: {}", e.to_string());
+            }
 
+            loop {
+                std::thread::sleep(Duration::from_secs(60));
+
+                if let Ok(authors) = store.get_authors() {
+                    if filters.authors_metadata.authors.as_ref() != Some(&authors) {
+                        filters.authors_metadata = SubscriptionFilter::new()
+                            .authors(authors)
+                            .kind(Kind::Base(KindBase::Metadata));
+
+                        if let Err(e) =
+                            RUNTIME.block_on(async { client.subscribe(filters.to_vec()).await })
+                        {
+                            log::error!("Impossible to subscribe to events: {}", e.to_string());
+                        }
+                    }
+                }
+            }
+        });
+
+        let client = self.client.clone();
+        let store = self.store.clone();
         let join = tokio::task::spawn(async move {
             loop {
                 let mut notifications = client.notifications();
                 while let Ok(notification) = notifications.recv().await {
-                    /* if let Ok(authors) = store.get_authors() {
-                        if filters.authors_metadata.authors.as_ref() != Some(&authors) {
-                            filters.authors_metadata = SubscriptionFilter::new()
-                                .authors(authors)
-                                .kind(Kind::Base(KindBase::Metadata));
-
-                            if let Err(e) = client.subscribe(filters.to_vec()) {
-                                log::error!("Impossible to subscribe to events: {}", e.to_string());
-                            }
-                        }
-                    } */
-
                     if let RelayPoolNotifications::ReceivedEvent(event) = notification {
                         let mut authors: Vec<XOnlyPublicKey> = Vec::new();
 
@@ -121,7 +133,6 @@ where
                             }
                             Kind::Base(KindBase::ContactList) => {
                                 let mut contact_list: Vec<Contact> = Vec::new();
-                                println!("Contact list: {:?}", event);
                                 for tag in event.tags.clone().into_iter() {
                                     let tag: Vec<String> = tag.as_vec();
                                     if let Some(pk) = tag.get(1) {

@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use iced::widget::{text, Button, Checkbox, Column, Row, Text, TextInput};
 use iced::{time, Alignment, Command, Element, Length, Subscription};
-use nostr_sdk::blocking::Client;
 use nostr_sdk::nostr::url::Url;
+use nostr_sdk::Client;
 use nostr_sdk::{Relay, RelayStatus};
 
 use super::SettingMessage;
@@ -18,6 +18,7 @@ use crate::stage::dashboard::component::Dashboard;
 use crate::stage::dashboard::{Context, State};
 use crate::theme::color::{GREEN, RED, YELLOW};
 use crate::theme::icon::TRASH;
+use crate::RUNTIME;
 
 #[derive(Debug, Clone)]
 pub enum RelaysMessage {
@@ -26,6 +27,7 @@ pub enum RelaysMessage {
     ProxyToggled(bool),
     AddRelay,
     RemoveRelay(String),
+    SetRelays(HashMap<Url, (Relay, RelayStatus)>),
 }
 
 #[derive(Debug, Default)]
@@ -33,7 +35,7 @@ pub struct RelaysState {
     relay_url: String,
     proxy: String,
     use_proxy: bool,
-    relays: HashMap<Url, Relay>,
+    relays: HashMap<Url, (Relay, RelayStatus)>,
     error: Option<String>,
 }
 
@@ -50,10 +52,10 @@ impl RelaysState {
         self.error = None;
     }
 
-    fn add_relay(&mut self, client: &Client, proxy: Option<SocketAddr>) {
-        match client.add_relay(&self.relay_url, proxy) {
+    async fn add_relay(&mut self, client: &Client, proxy: Option<SocketAddr>) {
+        match client.add_relay(&self.relay_url, proxy).await {
             Ok(_) => {
-                if let Err(e) = client.connect() {
+                if let Err(e) = client.connect().await {
                     self.error = Some(e.to_string())
                 } else {
                     self.relay_url.clear();
@@ -72,12 +74,12 @@ impl State for RelaysState {
 
     fn subscription(&self) -> Subscription<Message> {
         Subscription::batch(vec![
-            time::every(Duration::from_secs(5)).map(|_| Message::Tick)
+            time::every(Duration::from_secs(7)).map(|_| Message::Tick)
         ])
     }
 
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
-        let client = &ctx.client;
+        let client = ctx.client.clone();
         if let Message::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(msg))) = message
         {
             match msg {
@@ -87,21 +89,37 @@ impl State for RelaysState {
                 RelaysMessage::AddRelay => {
                     if self.use_proxy {
                         match self.proxy.parse() {
-                            Ok(proxy) => self.add_relay(client, Some(proxy)),
+                            Ok(proxy) => RUNTIME
+                                .block_on(async { self.add_relay(&client, Some(proxy)).await }),
                             Err(e) => self.error = Some(e.to_string()),
                         }
                     } else {
-                        self.add_relay(client, None);
+                        RUNTIME.block_on(async { self.add_relay(&client, None).await });
                     };
                 }
-                RelaysMessage::RemoveRelay(url) => match client.remove_relay(url) {
-                    Ok(_) => self.error = None,
-                    Err(e) => self.error = Some(e.to_string()),
-                },
+                RelaysMessage::RemoveRelay(url) => RUNTIME.block_on(async {
+                    match client.remove_relay(url).await {
+                        Ok(_) => self.error = None,
+                        Err(e) => self.error = Some(e.to_string()),
+                    }
+                }),
+                RelaysMessage::SetRelays(relays) => self.relays = relays,
             }
         }
-        self.relays = client.relays();
-        Command::none()
+        Command::perform(
+            async move {
+                let mut relays = HashMap::new();
+                for (url, relay) in client.relays().await.into_iter() {
+                    relays.insert(url, (relay.clone(), relay.status().await));
+                }
+                relays
+            },
+            |relays| {
+                Message::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(
+                    RelaysMessage::SetRelays(relays),
+                )))
+            },
+        )
     }
 
     fn view(&self, ctx: &Context) -> Element<Message> {
@@ -143,7 +161,7 @@ impl State for RelaysState {
             relays = relays.push(Text::new("Relays:"));
         }
 
-        for (url, relay) in self.relays.iter() {
+        for (url, (relay, status)) in self.relays.iter() {
             let button = Button::new(Icon::view(&TRASH))
                 .padding(10)
                 .style(iced::theme::Button::Destructive)
@@ -151,7 +169,7 @@ impl State for RelaysState {
                     SettingMessage::Relays(RelaysMessage::RemoveRelay(url.to_string())),
                 )));
 
-            let status = match relay.status_blocking() {
+            let status = match status {
                 RelayStatus::Connected => Circle::new(7.0).color(GREEN),
                 RelayStatus::Initialized | RelayStatus::Connecting => {
                     Circle::new(7.0).color(YELLOW)

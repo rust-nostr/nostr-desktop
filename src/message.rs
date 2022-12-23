@@ -1,8 +1,8 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use nostr_sdk::blocking::Client;
 use nostr_sdk::nostr::Event;
+use nostr_sdk::Client;
 
 use crate::nostr::db::Store;
 use crate::stage::auth::screen::LoginMessage;
