@@ -1,55 +1,31 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::{clipboard, executor, Application, Command, Element, Settings, Subscription, Theme};
+use iced::{executor, Application, Command, Element, Settings, Subscription, Theme};
 
 mod component;
-mod context;
-mod layout;
+mod error;
 mod message;
 mod nostr;
+mod stage;
 mod theme;
+mod util;
 
-use self::context::{Context, Menu, Setting, Stage};
-use self::layout::{
-    ChatState, ContactsState, ExploreState, HomeState, LoginState, NotificationsState,
-    ProfileState, RelaysState, SettingState, State,
-};
 use self::message::Message;
-use self::nostr::sync::NostrSync;
 
 pub fn main() -> iced::Result {
     env_logger::init();
     let mut settings = Settings::default();
     settings.window.min_size = Some((600, 600));
-    App::run(settings)
+    NostrDesktop::run(settings)
 }
 
-struct App {
-    state: Box<dyn State>,
-    context: Context,
+pub enum NostrDesktop {
+    Auth(stage::Auth),
+    Dashboard(stage::App),
 }
 
-pub fn new_state(context: &Context) -> Box<dyn State> {
-    match &context.stage {
-        Stage::Login => LoginState::new().into(),
-        Stage::Register => todo!(),
-        Stage::Menu(menu) => match menu {
-            Menu::Home => HomeState::new().into(),
-            Menu::Explore => ExploreState::new().into(),
-            Menu::Chats => ChatState::new().into(),
-            Menu::Contacts => ContactsState::new().into(),
-            Menu::Notifications => NotificationsState::new().into(),
-            Menu::Profile => ProfileState::new().into(),
-            Menu::Setting(s) => match s {
-                Setting::Main => SettingState::new().into(),
-                Setting::Relays => RelaysState::new().into(),
-            },
-        },
-    }
-}
-
-impl Application for App {
+impl Application for NostrDesktop {
     type Executor = executor::Default;
     type Flags = ();
     type Message = Message;
@@ -59,44 +35,45 @@ impl Application for App {
         // read local db
         // if key exists, load main app
         // else load login/register view
-        let context = Context::new(Stage::default(), None);
-        let app = Self {
-            state: new_state(&context),
-            context,
-        };
-        (app, Command::none())
+        let stage = stage::Auth::new();
+        (Self::Auth(stage.0), stage.1)
     }
 
     fn title(&self) -> String {
-        self.state.title()
+        match self {
+            Self::Auth(auth) => auth.title(),
+            Self::Dashboard(app) => app.title(),
+        }
     }
 
     fn theme(&self) -> Theme {
         Theme::Dark
     }
 
-    fn subscription(&self) -> iced::Subscription<Self::Message> {
-        if let Some(client) = self.context.client.clone() {
-            let sync = NostrSync::subscription(client).map(Message::Sync);
-            Subscription::batch(vec![sync, self.state.subscription()])
-        } else {
-            Subscription::batch(vec![self.state.subscription()])
+    fn subscription(&self) -> Subscription<Self::Message> {
+        match self {
+            Self::Auth(auth) => auth.subscription(),
+            Self::Dashboard(app) => app.subscription(),
         }
     }
 
     fn update(&mut self, message: Message) -> Command<Self::Message> {
-        match message {
-            Message::SetStage(stage) => {
-                self.context.set_stage(stage);
-                self.state = new_state(&self.context);
-                self.state.update(&mut self.context, message)
+        match self {
+            Self::Auth(auth) => {
+                let (command, stage_to_move) = auth.update(message);
+                if let Some(stage) = stage_to_move {
+                    *self = stage;
+                }
+                command
             }
-            Message::Clipboard(text) => clipboard::write(text),
-            _ => self.state.update(&mut self.context, message),
+            Self::Dashboard(app) => app.update(message),
         }
     }
 
     fn view(&self) -> Element<Self::Message> {
-        self.state.view(&self.context)
+        match self {
+            Self::Auth(auth) => auth.view(),
+            Self::Dashboard(app) => app.view(),
+        }
     }
 }

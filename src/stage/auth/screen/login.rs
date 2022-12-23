@@ -6,9 +6,11 @@ use iced::{Command, Element, Length};
 use nostr_sdk::client::blocking::Client;
 use nostr_sdk::nostr::key::{FromSkStr, Keys};
 
-use crate::context::{Context, Menu, Stage};
-use crate::layout::State;
 use crate::message::Message;
+use crate::nostr::db::Store;
+use crate::stage::auth::context::Context;
+use crate::stage::auth::State;
+use crate::util::dir;
 
 #[derive(Debug, Clone)]
 pub enum LoginMessage {
@@ -31,25 +33,30 @@ impl LoginState {
         self.secret_key = String::new();
         self.error = None;
     }
+
+    fn open_db(keys: &Keys) -> nostr_sdk::Result<Store> {
+        let account_dir = dir::account_dir(keys.public_key())?;
+        Store::open(account_dir)
+    }
 }
 
 impl State for LoginState {
     fn title(&self) -> String {
         String::from("Nostr - Login")
     }
-
-    fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
+    fn update(&mut self, _ctx: &mut Context, message: Message) -> Command<Message> {
         if let Message::Login(msg) = message {
             match msg {
                 LoginMessage::SecretKeyChanged(secret_key) => self.secret_key = secret_key,
                 LoginMessage::ButtonPressed => match Keys::from_sk_str(&self.secret_key) {
-                    Ok(keys) => {
-                        self.clear();
-                        ctx.set_client(Some(Client::new(&keys)));
-                        return Command::perform(async move {}, |_| {
-                            Message::SetStage(Stage::Menu(Menu::Home))
-                        });
-                    }
+                    Ok(keys) => match Self::open_db(&keys) {
+                        Ok(store) => {
+                            return Command::perform(async move {}, |_| {
+                                Message::LoginResult(Client::new(keys), store)
+                            })
+                        }
+                        Err(e) => self.error = Some(e.to_string()),
+                    },
                     Err(e) => self.error = Some(e.to_string()),
                 },
             }

@@ -3,6 +3,8 @@
 
 use nostr_sdk::client::blocking::Client;
 
+use crate::nostr::db::Store;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Setting {
     Main,
@@ -10,7 +12,7 @@ pub enum Setting {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Menu {
+pub enum Stage {
     Home,
     Explore,
     Chats,
@@ -20,35 +22,37 @@ pub enum Menu {
     Setting(Setting),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Stage {
-    Login,
-    Register,
-    Menu(Menu),
-}
-
 impl Default for Stage {
     fn default() -> Self {
-        Self::Login
+        Self::Home
     }
 }
 
 pub struct Context {
     //pub config: ConfigContext,
     pub stage: Stage,
-    pub client: Option<Client>,
+    pub client: Client,
+    pub store: Store,
 }
 
 impl Context {
-    pub fn new(stage: Stage, client: Option<Client>) -> Self {
-        Self { stage, client }
+    pub fn new(stage: Stage, client: Client, store: Store) -> Self {
+        Self {
+            stage,
+            client,
+            store,
+        }
     }
 
     pub fn set_stage(&mut self, stage: Stage) {
         self.stage = stage;
     }
 
-    pub fn set_client(&mut self, client: Option<Client>) {
+    pub fn set_client(&mut self, client: Client) {
         self.client = client;
+    }
+
+    pub fn set_store(&mut self, store: Store) {
+        self.store = store;
     }
 }

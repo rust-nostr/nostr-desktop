@@ -3,12 +3,11 @@
 
 use iced::widget::{Column, Row, Text};
 use iced::{Command, Element};
-use nostr_sdk::nostr::{Event, Kind, KindBase, SubscriptionFilter};
+use nostr_sdk::nostr::Event;
 
-use crate::component::Dashboard;
-use crate::context::{Context, Stage};
-use crate::layout::State;
 use crate::message::Message;
+use crate::stage::dashboard::component::Dashboard;
+use crate::stage::dashboard::{Context, State};
 
 #[derive(Debug, Clone)]
 pub enum ChatMessage {}
@@ -39,23 +38,13 @@ impl State for ChatState {
     }
 
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
-        if let Some(client) = ctx.client.as_mut() {
-            let subscription = SubscriptionFilter::new()
-                .pubkey(client.keys().public_key())
-                .kind(Kind::Base(KindBase::EncryptedDirectMessage));
+        self.events = ctx.store.get_events().unwrap();
 
-            if let Err(e) = client.subscribe(vec![subscription]) {
-                self.error = Some(e.to_string());
-            }
-
-            if let Message::Sync(event) = message {
-                self.events.push(event);
-            }
-
-            Command::none()
-        } else {
-            Command::perform(async move {}, |_| Message::SetStage(Stage::Login))
+        if let Message::Sync(event) = message {
+            self.events.push(event);
         }
+
+        Command::none()
     }
 
     fn view(&self, ctx: &Context) -> Element<Message> {

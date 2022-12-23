@@ -1,16 +1,19 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use nostr_sdk::blocking::Client;
 use nostr_sdk::nostr::Event;
 
-use crate::context::Stage;
-use crate::layout::{
-    ChatMessage, ContactsMessage, ExploreMessage, HomeMessage, LoginMessage, NotificationsMessage,
+use crate::nostr::db::Store;
+use crate::stage::auth::screen::LoginMessage;
+use crate::stage::dashboard::screen::{
+    ChatMessage, ContactsMessage, ExploreMessage, HomeMessage, NotificationsMessage,
     ProfileMessage, SettingMessage,
 };
+use crate::stage::{auth, dashboard};
 
 #[derive(Debug, Clone)]
-pub enum MenuMessage {
+pub enum DashboardMessage {
     Home(HomeMessage),
     Explore(ExploreMessage),
     Chat(ChatMessage),
@@ -24,8 +27,10 @@ pub enum MenuMessage {
 pub enum Message {
     Tick,
     Sync(Event),
-    SetStage(Stage),
+    SetAuthStage(auth::Stage),
+    SetDashboardStage(dashboard::Stage),
+    LoginResult(Client, Store),
     Clipboard(String),
     Login(LoginMessage),
-    Menu(MenuMessage),
+    Dashboard(DashboardMessage),
 }

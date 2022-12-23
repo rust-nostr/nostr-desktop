@@ -1,0 +1,27 @@
+// Copyright (c) 2022 Yuki Kishimoto
+// Distributed under the MIT software license
+
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
+use nostr_sdk::Result;
+
+pub fn home() -> PathBuf {
+    match dirs::home_dir() {
+        Some(path) => path,
+        None => Path::new("./").to_path_buf(),
+    }
+}
+
+pub fn default_dir() -> Result<PathBuf> {
+    let path: PathBuf = home().join(".nostr-desktop");
+    fs::create_dir_all(path.as_path())?;
+    Ok(path)
+}
+
+pub fn account_dir(public_key: XOnlyPublicKey) -> Result<PathBuf> {
+    let path = default_dir()?.join("accounts").join(public_key.to_string());
+    fs::create_dir_all(path.as_path())?;
+    Ok(path)
+}

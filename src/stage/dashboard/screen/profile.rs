@@ -4,10 +4,10 @@
 use iced::widget::Column;
 use iced::{Command, Element};
 
-use crate::component::Dashboard;
-use crate::context::{Context, Stage};
-use crate::layout::State;
-use crate::message::{MenuMessage, Message};
+use crate::message::{DashboardMessage, Message};
+use crate::stage::dashboard::component::Dashboard;
+use crate::stage::dashboard::context::Context;
+use crate::stage::dashboard::State;
 
 #[derive(Debug, Clone)]
 pub enum ProfileMessage {}
@@ -26,15 +26,11 @@ impl State for ProfileState {
         String::from("Nostr - Profile")
     }
 
-    fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
-        if let Some(_client) = ctx.client.as_mut() {
-            if let Message::Menu(MenuMessage::Profile(_msg)) = message {
-                Command::none()
-            } else {
-                Command::none()
-            }
+    fn update(&mut self, _ctx: &mut Context, message: Message) -> Command<Message> {
+        if let Message::Dashboard(DashboardMessage::Profile(_msg)) = message {
+            Command::none()
         } else {
-            Command::perform(async move {}, |_| Message::SetStage(Stage::Login))
+            Command::none()
         }
     }
 

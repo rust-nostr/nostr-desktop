@@ -1,0 +1,85 @@
+use iced::{Command, Element, Subscription};
+use nostr_sdk::blocking::Client;
+
+pub mod component;
+mod context;
+pub mod screen;
+
+pub use self::context::{Context, Setting, Stage};
+use self::screen::{
+    ChatState, ContactsState, ExploreState, HomeState, NotificationsState, ProfileState,
+    RelaysState, SettingState,
+};
+use crate::nostr::db::Store;
+use crate::{message::Message, nostr::sync::NostrSync};
+
+pub struct App {
+    pub state: Box<dyn State>,
+    pub context: Context,
+}
+
+pub fn new_state(context: &Context) -> Box<dyn State> {
+    match &context.stage {
+        Stage::Home => HomeState::new().into(),
+        Stage::Explore => ExploreState::new().into(),
+        Stage::Chats => ChatState::new().into(),
+        Stage::Contacts => ContactsState::new().into(),
+        Stage::Notifications => NotificationsState::new().into(),
+        Stage::Profile => ProfileState::new().into(),
+        Stage::Setting(s) => match s {
+            Setting::Main => SettingState::new().into(),
+            Setting::Relays => RelaysState::new().into(),
+        },
+    }
+}
+
+pub trait State {
+    fn title(&self) -> String;
+    fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message>;
+    fn view(&self, ctx: &Context) -> Element<Message>;
+    fn subscription(&self) -> Subscription<Message> {
+        Subscription::none()
+    }
+    fn load(&self, _ctx: &Context) -> Command<Message> {
+        Command::none()
+    }
+}
+
+impl App {
+    pub fn new(client: Client, store: Store) -> (Self, Command<Message>) {
+        // read local db
+        // if key exists, load main app
+        // else load login/register view
+        let context = Context::new(Stage::default(), client, store);
+        let app = Self {
+            state: new_state(&context),
+            context,
+        };
+        (app, Command::none())
+    }
+
+    pub fn title(&self) -> String {
+        self.state.title()
+    }
+
+    pub fn subscription(&self) -> Subscription<Message> {
+        let sync = NostrSync::subscription(self.context.client.clone(), self.context.store.clone())
+            .map(Message::Sync);
+        Subscription::batch(vec![sync, self.state.subscription()])
+    }
+
+    pub fn update(&mut self, message: Message) -> Command<Message> {
+        match message {
+            Message::SetDashboardStage(stage) => {
+                self.context.set_stage(stage);
+                self.state = new_state(&self.context);
+                self.state.update(&mut self.context, message)
+            }
+            _ => self.state.update(&mut self.context, message),
+        }
+    }
+
+    pub fn view(&self) -> Element<Message> {
+        self.state.view(&self.context)
+    }
+}

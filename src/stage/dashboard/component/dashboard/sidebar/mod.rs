@@ -7,10 +7,10 @@ use iced::Length;
 mod button;
 
 use self::button::{SidebarButton, BUTTON_SIZE};
-use crate::component::icon::Icon;
-use crate::context::{Menu, Setting, Stage};
+use crate::component::Icon;
+use crate::stage::dashboard::{Context, Setting, Stage};
 use crate::theme::icon::{CHAT, CONTACT, EXPLORE, HOME, NOTIFICATION, PERSON, SETTING};
-use crate::{Context, Message};
+use crate::Message;
 
 #[derive(Clone, Default)]
 pub struct Sidebar;
@@ -21,20 +21,18 @@ impl Sidebar {
     }
 
     pub fn view<'a>(&self, ctx: &Context) -> Container<'a, Message> {
-        let home_button =
-            SidebarButton::new("Home", Icon::view(&HOME)).view(ctx, Stage::Menu(Menu::Home));
-        let explore_button = SidebarButton::new("Explore", Icon::view(&EXPLORE))
-            .view(ctx, Stage::Menu(Menu::Explore));
-        let chat_button =
-            SidebarButton::new("Chats", Icon::view(&CHAT)).view(ctx, Stage::Menu(Menu::Chats));
-        let contacts_button = SidebarButton::new("Contacts", Icon::view(&CONTACT))
-            .view(ctx, Stage::Menu(Menu::Contacts));
+        let home_button = SidebarButton::new("Home", Icon::view(&HOME)).view(ctx, Stage::Home);
+        let explore_button =
+            SidebarButton::new("Explore", Icon::view(&EXPLORE)).view(ctx, Stage::Explore);
+        let chat_button = SidebarButton::new("Chats", Icon::view(&CHAT)).view(ctx, Stage::Chats);
+        let contacts_button =
+            SidebarButton::new("Contacts", Icon::view(&CONTACT)).view(ctx, Stage::Contacts);
         let notifications_button = SidebarButton::new("Notifications", Icon::view(&NOTIFICATION))
-            .view(ctx, Stage::Menu(Menu::Notifications));
-        let profile_button = SidebarButton::new("Profile", Icon::view(&PERSON))
-            .view(ctx, Stage::Menu(Menu::Profile));
+            .view(ctx, Stage::Notifications);
+        let profile_button =
+            SidebarButton::new("Profile", Icon::view(&PERSON)).view(ctx, Stage::Profile);
         let setting_button = SidebarButton::new("Settings", Icon::view(&SETTING))
-            .view(ctx, Stage::Menu(Menu::Setting(Setting::Main)));
+            .view(ctx, Stage::Setting(Setting::Main));
 
         let version = Text::new(format!(
             "{} v{}",

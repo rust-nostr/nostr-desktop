@@ -4,7 +4,8 @@
 use iced::widget::{Column, Container, Row, Rule, Scrollable};
 use iced::{Element, Length};
 
-use crate::{Context, Message};
+use crate::stage::dashboard::Context;
+use crate::Message;
 
 mod navbar;
 mod sidebar;

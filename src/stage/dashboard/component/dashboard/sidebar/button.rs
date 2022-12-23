@@ -5,8 +5,8 @@ use iced::widget::{button, Button, Container, Row, Text};
 use iced::{theme, Alignment};
 use iced::{Background, Length, Theme, Vector};
 
-use crate::context::{Context, Stage};
 use crate::message::Message;
+use crate::stage::dashboard::{Context, Stage};
 use crate::theme::color::{PRIMARY, TRANSPARENT, WHITE};
 
 pub const BUTTON_SIZE: u16 = 180;
@@ -89,7 +89,7 @@ impl<'a> SidebarButton<'a> {
 
         Container::new(
             Button::new(content)
-                .on_press(Message::SetStage(stage))
+                .on_press(Message::SetDashboardStage(stage))
                 .width(Length::Units(BUTTON_SIZE))
                 .style(style),
         )

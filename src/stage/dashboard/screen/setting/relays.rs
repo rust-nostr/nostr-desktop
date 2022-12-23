@@ -12,10 +12,10 @@ use nostr_sdk::nostr::url::Url;
 use nostr_sdk::{Relay, RelayStatus};
 
 use super::SettingMessage;
-use crate::component::{Circle, Dashboard, Icon};
-use crate::context::{Context, Stage};
-use crate::layout::State;
-use crate::message::{MenuMessage, Message};
+use crate::component::{Circle, Icon};
+use crate::message::{DashboardMessage, Message};
+use crate::stage::dashboard::component::Dashboard;
+use crate::stage::dashboard::{Context, State};
 use crate::theme::color::{GREEN, RED, YELLOW};
 use crate::theme::icon::TRASH;
 
@@ -77,44 +77,42 @@ impl State for RelaysState {
     }
 
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
-        if let Some(client) = ctx.client.clone() {
-            if let Message::Menu(MenuMessage::Setting(SettingMessage::Relays(msg))) = message {
-                match msg {
-                    RelaysMessage::RelayUrlChanged(url) => self.relay_url = url,
-                    RelaysMessage::ProxyChanged(proxy) => self.proxy = proxy,
-                    RelaysMessage::ProxyToggled(value) => self.use_proxy = value,
-                    RelaysMessage::AddRelay => {
-                        if self.use_proxy {
-                            match self.proxy.parse() {
-                                Ok(proxy) => self.add_relay(&client, Some(proxy)),
-                                Err(e) => self.error = Some(e.to_string()),
-                            }
-                        } else {
-                            self.add_relay(&client, None);
-                        };
-                    }
-                    RelaysMessage::RemoveRelay(url) => match client.remove_relay(url) {
-                        Ok(_) => self.error = None,
-                        Err(e) => self.error = Some(e.to_string()),
-                    },
+        let client = &ctx.client;
+        if let Message::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(msg))) = message
+        {
+            match msg {
+                RelaysMessage::RelayUrlChanged(url) => self.relay_url = url,
+                RelaysMessage::ProxyChanged(proxy) => self.proxy = proxy,
+                RelaysMessage::ProxyToggled(value) => self.use_proxy = value,
+                RelaysMessage::AddRelay => {
+                    if self.use_proxy {
+                        match self.proxy.parse() {
+                            Ok(proxy) => self.add_relay(client, Some(proxy)),
+                            Err(e) => self.error = Some(e.to_string()),
+                        }
+                    } else {
+                        self.add_relay(client, None);
+                    };
                 }
+                RelaysMessage::RemoveRelay(url) => match client.remove_relay(url) {
+                    Ok(_) => self.error = None,
+                    Err(e) => self.error = Some(e.to_string()),
+                },
             }
-            self.relays = client.relays();
-            Command::none()
-        } else {
-            Command::perform(async move {}, |_| Message::SetStage(Stage::Login))
         }
+        self.relays = client.relays();
+        Command::none()
     }
 
     fn view(&self, ctx: &Context) -> Element<Message> {
         let heading = Text::new("Relays").size(30);
 
-        let on_submit = Message::Menu(MenuMessage::Setting(SettingMessage::Relays(
+        let on_submit = Message::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(
             RelaysMessage::AddRelay,
         )));
 
         let relay_url_input = TextInput::new("Relay url", &self.relay_url, |s| {
-            Message::Menu(MenuMessage::Setting(SettingMessage::Relays(
+            Message::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(
                 RelaysMessage::RelayUrlChanged(s),
             )))
         })
@@ -123,13 +121,13 @@ impl State for RelaysState {
         .size(20);
 
         let use_proxy_checkbox = Checkbox::new(self.use_proxy, "Use proxy", |value| {
-            Message::Menu(MenuMessage::Setting(SettingMessage::Relays(
+            Message::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(
                 RelaysMessage::ProxyToggled(value),
             )))
         });
 
         let proxy_input = TextInput::new("Socks5 proxy (ex. 127.0.0.1:9050)", &self.proxy, |s| {
-            Message::Menu(MenuMessage::Setting(SettingMessage::Relays(
+            Message::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(
                 RelaysMessage::ProxyChanged(s),
             )))
         })
@@ -149,9 +147,9 @@ impl State for RelaysState {
             let button = Button::new(Icon::view(&TRASH))
                 .padding(10)
                 .style(iced::theme::Button::Destructive)
-                .on_press(Message::Menu(MenuMessage::Setting(SettingMessage::Relays(
-                    RelaysMessage::RemoveRelay(url.to_string()),
-                ))));
+                .on_press(Message::Dashboard(DashboardMessage::Setting(
+                    SettingMessage::Relays(RelaysMessage::RemoveRelay(url.to_string())),
+                )));
 
             let status = match relay.status_blocking() {
                 RelayStatus::Connected => Circle::new(7.0).color(GREEN),
