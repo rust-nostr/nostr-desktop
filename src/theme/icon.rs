@@ -9,3 +9,4 @@ pub const CONTACT: char = '\u{F4DB}';
 pub const NOTIFICATION: char = '\u{F18A}';
 pub const PERSON: char = '\u{F4DA}';
 pub const SETTING: char = '\u{F3E5}';
+pub const TRASH: char = '\u{F78B}';
