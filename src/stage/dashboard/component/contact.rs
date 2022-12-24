@@ -1,14 +1,16 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::widget::{Column, Container, Row, Text};
-use iced::Alignment;
+use iced::widget::{image, Column, Container, Row, Text};
+use iced::{Alignment, Length};
 use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
 use nostr_sdk::nostr::Metadata;
 
+#[derive(Debug)]
 pub struct Contact {
-    public_key: XOnlyPublicKey,
-    metadata: Metadata,
+    pub public_key: XOnlyPublicKey,
+    pub metadata: Metadata,
+    pub image: Option<image::Handle>,
 }
 
 impl Contact {
@@ -16,21 +18,24 @@ impl Contact {
         Self {
             public_key,
             metadata,
+            image: None,
         }
     }
 
-    pub fn view<'a, T: 'a>(self) -> Container<'a, T> {
-        let mut image = Column::new();
-
-        if let Some(picture) = self.metadata.picture {
-            image = image.push(Text::new(picture.to_string()));
+    pub fn view<'a, T: 'a>(&'a self) -> Container<'a, T> {
+        let image = if let Some(image) = self.image.clone() {
+            Column::new().push(
+                image::viewer(image)
+                    .height(Length::Units(40))
+                    .width(Length::Units(40)),
+            )
         } else {
-            image = image.push(Text::new("No image"));
-        }
+            Column::new().push(Text::new("No image"))
+        };
 
         let mut info = Column::new();
 
-        if let Some(display_name) = self.metadata.display_name {
+        if let Some(display_name) = self.metadata.display_name.clone() {
             info = info.push(Row::new().push(Text::new(display_name)));
         } else {
             let pk = self.public_key.to_string();
@@ -41,7 +46,7 @@ impl Contact {
             ))));
         }
 
-        if let Some(name) = self.metadata.name {
+        if let Some(name) = self.metadata.name.clone() {
             info = info.push(Row::new().push(Text::new(format!("@{}", name)).size(16)));
         } else {
             info = info.push(Row::new());

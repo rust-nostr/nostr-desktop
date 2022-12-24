@@ -1,9 +1,13 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::widget::{Column, Row, Text};
+use std::collections::HashMap;
+
+use iced::widget::{image, Column, Row, Text};
 use iced::{Command, Element};
-use nostr_sdk::nostr::{self, Metadata};
+use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
+use nostr_sdk::nostr::url::Url;
+use nostr_sdk::nostr::Metadata;
 
 use crate::message::{DashboardMessage, Message};
 use crate::stage::dashboard::component::Contact;
@@ -11,18 +15,21 @@ use crate::stage::dashboard::component::Dashboard;
 use crate::stage::dashboard::{Context, State};
 
 #[derive(Debug, Clone)]
-pub enum ContactsMessage {}
+pub enum ContactsMessage {
+    SearchImage(XOnlyPublicKey, Url),
+    MaybeFoundImage(XOnlyPublicKey, Option<image::Handle>),
+}
 
 #[derive(Debug, Default)]
 pub struct ContactsState {
-    contacts: Vec<nostr::Contact>,
+    contacts: HashMap<XOnlyPublicKey, Contact>,
     error: Option<String>,
 }
 
 impl ContactsState {
     pub fn new() -> Self {
         Self {
-            contacts: Vec::new(),
+            contacts: HashMap::new(),
             error: None,
         }
     }
@@ -34,31 +41,62 @@ impl State for ContactsState {
     }
 
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
+        let mut commands = Vec::new();
+
         if let Ok(contacts) = ctx.store.get_contacts() {
-            self.contacts = contacts;
+            for contact in contacts.iter() {
+                if let Ok(profile) = ctx.store.get_profile(contact.pk) {
+                    let metadata = profile.metadata;
+
+                    self.contacts
+                        .entry(contact.pk)
+                        .and_modify(|c| c.metadata = metadata.clone())
+                        .or_insert_with(|| Contact::new(contact.pk, metadata));
+                } else {
+                    self.contacts
+                        .entry(contact.pk)
+                        .or_insert_with(|| Contact::new(contact.pk, Metadata::default()));
+                }
+            }
         } else {
             self.error = Some("Impossible to get contacts".to_string());
         }
 
-        if let Message::Dashboard(DashboardMessage::Contacts(_msg)) = message {
-            Command::none()
-        } else {
-            Command::none()
+        if let Message::Dashboard(DashboardMessage::Contacts(msg)) = message {
+            match msg {
+                ContactsMessage::SearchImage(pk, url) => {
+                    return Command::perform(async { fetch_image(url).await }, move |image| {
+                        ContactsMessage::MaybeFoundImage(pk, image).into()
+                    })
+                }
+                ContactsMessage::MaybeFoundImage(pk, image) => {
+                    self.contacts.entry(pk).and_modify(|c| c.image = image);
+                    return Command::perform(async {}, |_| Message::Tick);
+                }
+            }
         }
+
+        for (pk, contact) in self.contacts.iter() {
+            if contact.image.is_none() {
+                if let Some(url) = contact.metadata.picture.clone() {
+                    let pk = *pk;
+                    commands.push(Command::perform(async {}, move |_| {
+                        ContactsMessage::SearchImage(pk, url).into()
+                    }))
+                }
+            }
+        }
+
+        Command::batch(commands)
     }
 
     fn view(&self, ctx: &Context) -> Element<Message> {
         let mut contacts = Column::new().spacing(10);
 
-        for contact in self.contacts.iter() {
-            if let Ok(profile) = ctx.store.get_profile(contact.pk) {
-                let metadata = profile.metadata;
-                contacts =
-                    contacts.push(Row::new().push(Contact::new(contact.pk, metadata).view()));
-            } else {
-                contacts = contacts
-                    .push(Row::new().push(Contact::new(contact.pk, Metadata::default()).view()));
-            }
+        let mut contacts_vec: Vec<(&XOnlyPublicKey, &Contact)> = self.contacts.iter().collect();
+        contacts_vec.sort_by(|a, b| b.1.metadata.cmp(&a.1.metadata));
+        for (_, contact) in contacts_vec.iter() {
+            contacts = contacts.push(Row::new().push(contact.view()));
         }
 
         let content = Column::new()
@@ -77,4 +115,21 @@ impl From<ContactsState> for Box<dyn State> {
     fn from(s: ContactsState) -> Box<dyn State> {
         Box::new(s)
     }
+}
+
+impl From<ContactsMessage> for Message {
+    fn from(msg: ContactsMessage) -> Self {
+        Self::Dashboard(DashboardMessage::Contacts(msg))
+    }
+}
+
+pub async fn fetch_image(url: Url) -> Option<image::Handle> {
+    match reqwest::get(url).await {
+        Ok(res) => match res.bytes().await {
+            Ok(bytes) => return Some(image::Handle::from_memory(bytes.as_ref().to_vec())),
+            Err(e) => log::error!("Impossible to fetch image bytes: {}", e.to_string()),
+        },
+        Err(e) => log::error!("Impossible to fetch image: {}", e.to_string()),
+    }
+    None
 }
