@@ -96,14 +96,9 @@ where
 
                         match event.kind {
                             Kind::Base(KindBase::TextNote) => {
-                                let note = TextNote {
-                                    pubkey: event.pubkey,
-                                    content: event.content,
-                                    tags: event.tags,
-                                    timestamp: event.created_at,
-                                };
-
-                                if let Err(e) = store.set_textnote(event.id, note) {
+                                if let Err(e) =
+                                    store.set_textnote(event.id, TextNote::from(event.clone()))
+                                {
                                     log::error!("Impossible to save text note: {}", e.to_string());
                                 }
                             }

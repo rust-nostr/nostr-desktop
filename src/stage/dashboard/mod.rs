@@ -10,11 +10,11 @@ pub mod screen;
 
 pub use self::context::{Context, Setting, Stage};
 use self::screen::{
-    ChatState, ContactsState, ExploreState, HomeState, NotificationsState, ProfileState,
-    RelaysState, SettingState,
+    ChatState, ContactsState, ExploreState, HomeMessage, HomeState, NotificationsState,
+    ProfileState, RelaysState, SettingState,
 };
-use crate::nostr::db::Store;
 use crate::message::Message;
+use crate::nostr::db::Store;
 use crate::nostr::sync::NostrSync;
 
 pub struct App {
@@ -80,6 +80,12 @@ impl App {
                 self.state = new_state(&self.context);
                 self.state.update(&mut self.context, message)
             }
+            Message::Sync(event) => match self.context.stage {
+                Stage::Home => self
+                    .state
+                    .update(&mut self.context, HomeMessage::PushTextNote(event).into()),
+                _ => Command::none(),
+            },
             _ => self.state.update(&mut self.context, message),
         }
     }
