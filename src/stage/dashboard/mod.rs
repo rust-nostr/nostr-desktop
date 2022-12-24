@@ -1,3 +1,6 @@
+// Copyright (c) 2022 Yuki Kishimoto
+// Distributed under the MIT software license
+
 use iced::{Command, Element, Subscription};
 use nostr_sdk::Client;
 
@@ -11,7 +14,8 @@ use self::screen::{
     RelaysState, SettingState,
 };
 use crate::nostr::db::Store;
-use crate::{message::Message, nostr::sync::NostrSync};
+use crate::message::Message;
+use crate::nostr::sync::NostrSync;
 
 pub struct App {
     pub state: Box<dyn State>,

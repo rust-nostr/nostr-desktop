@@ -16,7 +16,7 @@ use tokio::sync::mpsc;
 use crate::nostr::db::Store;
 use crate::RUNTIME;
 
-use super::db::model::Profile;
+use super::db::model::{Profile, TextNote};
 use super::filters::Filters;
 
 pub struct NostrSync {
@@ -50,13 +50,14 @@ where
                 encrypted_dm: SubscriptionFilter::new()
                     .pubkey(client.keys().public_key())
                     .kind(Kind::Base(KindBase::EncryptedDirectMessage)),
-                authors_metadata: SubscriptionFilter::new(),
+                following_authors: SubscriptionFilter::new(),
             };
 
             if let Ok(authors) = store.get_authors() {
-                filters.authors_metadata = SubscriptionFilter::new()
-                    .authors(authors)
-                    .kind(Kind::Base(KindBase::Metadata));
+                filters.following_authors = SubscriptionFilter::new().authors(authors).kinds(vec![
+                    Kind::Base(KindBase::Metadata),
+                    Kind::Base(KindBase::TextNote),
+                ]);
             }
 
             if let Err(e) = RUNTIME.block_on(async { client.subscribe(filters.to_vec()).await }) {
@@ -67,10 +68,12 @@ where
                 std::thread::sleep(Duration::from_secs(30));
 
                 if let Ok(authors) = store.get_authors() {
-                    if filters.authors_metadata.authors.as_ref() != Some(&authors) {
-                        filters.authors_metadata = SubscriptionFilter::new()
-                            .authors(authors)
-                            .kind(Kind::Base(KindBase::Metadata));
+                    if filters.following_authors.authors.as_ref() != Some(&authors) {
+                        filters.following_authors =
+                            SubscriptionFilter::new().authors(authors).kinds(vec![
+                                Kind::Base(KindBase::Metadata),
+                                Kind::Base(KindBase::TextNote),
+                            ]);
 
                         if let Err(e) =
                             RUNTIME.block_on(async { client.subscribe(filters.to_vec()).await })
@@ -92,6 +95,18 @@ where
                         let mut authors: Vec<XOnlyPublicKey> = vec![event.pubkey];
 
                         match event.kind {
+                            Kind::Base(KindBase::TextNote) => {
+                                let note = TextNote {
+                                    pubkey: event.pubkey,
+                                    content: event.content,
+                                    tags: event.tags,
+                                    timestamp: event.created_at,
+                                };
+
+                                if let Err(e) = store.set_textnote(event.id, note) {
+                                    log::error!("Impossible to save text note: {}", e.to_string());
+                                }
+                            }
                             Kind::Base(KindBase::Metadata) => {
                                 if let Ok(profile) = store.get_profile(event.pubkey) {
                                     if event.created_at > profile.timestamp {
@@ -155,10 +170,6 @@ where
 
                         if let Err(e) = store.set_authors(authors) {
                             log::error!("Impossible to save authors: {}", e.to_string());
-                        }
-
-                        if let Err(e) = store.save_event(&event) {
-                            log::error!("Impossible to save event: {}", e.to_string());
                         }
 
                         sender.send(event).ok();

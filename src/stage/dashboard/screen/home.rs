@@ -1,10 +1,11 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::widget::Column;
+use iced::widget::{Column, Text};
 use iced::{Command, Element};
 
-use crate::message::{DashboardMessage, Message};
+use crate::message::Message;
+use crate::nostr::db::model::TextNote;
 use crate::stage::dashboard::component::Dashboard;
 use crate::stage::dashboard::{Context, State};
 
@@ -12,11 +13,13 @@ use crate::stage::dashboard::{Context, State};
 pub enum HomeMessage {}
 
 #[derive(Debug, Default)]
-pub struct HomeState {}
+pub struct HomeState {
+    notes: Vec<TextNote>,
+}
 
 impl HomeState {
     pub fn new() -> Self {
-        Self {}
+        Self { notes: Vec::new() }
     }
 }
 
@@ -25,16 +28,22 @@ impl State for HomeState {
         String::from("Nostr - Home")
     }
 
-    fn update(&mut self, _ctx: &mut Context, message: Message) -> Command<Message> {
-        if let Message::Dashboard(DashboardMessage::Home(_msg)) = message {
-            Command::none()
-        } else {
-            Command::none()
+    fn update(&mut self, ctx: &mut Context, _message: Message) -> Command<Message> {
+        if self.notes.is_empty() {
+            if let Ok(notes) = ctx.store.get_textnotes_with_limit(50) {
+                self.notes = notes;
+            }
         }
+        Command::none()
     }
 
     fn view(&self, ctx: &Context) -> Element<Message> {
-        let content = Column::new();
+        let mut content = Column::new();
+
+        for note in self.notes.iter() {
+            content = content.push(Text::new(note.content.clone()));
+        }
+
         Dashboard::new().view(ctx, content)
     }
 }

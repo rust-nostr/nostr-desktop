@@ -8,8 +8,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 pub use rocksdb::{
-    BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType, WriteBatch,
-    WriteOptions,
+    BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType, Direction,
+    IteratorMode, WriteBatch, WriteOptions,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -18,6 +18,17 @@ use serde::Serialize;
 pub struct Store {
     db: Arc<rocksdb::DB>,
     column_families: Vec<String>,
+}
+
+pub enum IteratorOptions<'a> {
+    WithMode(IteratorMode<'a>),
+    WitLimit(usize, bool),
+}
+
+impl<'a> Default for IteratorOptions<'a> {
+    fn default() -> Self {
+        Self::WithMode(IteratorMode::Start)
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -177,46 +188,77 @@ impl Store {
         self.put(cf, key, self.serialize(value)?)
     }
 
-    pub fn iterator(&self, cf: Arc<BoundColumnFamily>) -> Result<HashMap<Vec<u8>, Vec<u8>>, Error> {
-        let mut collection = HashMap::new();
-        let mut iter = self.db.raw_iterator_cf(&cf);
+    pub fn iterator_with_mode(
+        &self,
+        cf: Arc<BoundColumnFamily>,
+        mode: IteratorMode,
+    ) -> Result<HashMap<Vec<u8>, Vec<u8>>, Error> {
+        let mut collection: HashMap<Vec<u8>, Vec<u8>> = HashMap::new();
 
-        iter.seek_to_first();
-        while iter.valid() {
-            if let Some(key) = iter.key() {
-                if let Some(value) = iter.value() {
-                    collection.insert(key.to_vec(), value.to_vec());
-                };
-            };
-            iter.next();
+        let iter = self.db.iterator_cf(&cf, mode);
+        for item in iter {
+            let (key, value) = item?;
+            collection.insert(key.to_vec(), value.to_vec());
         }
-
         Ok(collection)
     }
 
-    pub fn iterator_str_serialized<V>(
+    pub fn iterator_with_limit(
         &self,
         cf: Arc<BoundColumnFamily>,
-    ) -> Result<HashMap<String, V>, Error>
+        limit: usize,
+        ascending: bool,
+    ) -> Result<HashMap<Vec<u8>, Vec<u8>>, Error> {
+        let mut collection = if ascending {
+            self.iterator_with_mode(cf, IteratorMode::Start)?
+        } else {
+            self.iterator_with_mode(cf, IteratorMode::End)?
+        };
+        Ok(collection.drain().take(limit).collect())
+    }
+
+    pub fn iterator_with_opt(
+        &self,
+        cf: Arc<BoundColumnFamily>,
+        options: IteratorOptions,
+    ) -> Result<HashMap<Vec<u8>, Vec<u8>>, Error> {
+        match options {
+            IteratorOptions::WithMode(mode) => self.iterator_with_mode(cf, mode),
+            IteratorOptions::WitLimit(limit, ascending) => {
+                self.iterator_with_limit(cf, limit, ascending)
+            }
+        }
+    }
+
+    pub fn iterator(&self, cf: Arc<BoundColumnFamily>) -> Result<HashMap<Vec<u8>, Vec<u8>>, Error> {
+        self.iterator_with_opt(cf, IteratorOptions::default())
+    }
+
+    pub fn iterator_serialized_with_opt<K, V>(
+        &self,
+        cf: Arc<BoundColumnFamily>,
+        options: IteratorOptions,
+    ) -> Result<HashMap<K, V>, Error>
     where
+        K: DeserializeOwned + std::cmp::Eq + std::hash::Hash,
         V: DeserializeOwned,
     {
         let mut collection = HashMap::new();
 
-        for (key, value) in self.iterator(cf.clone())?.iter() {
-            match String::from_utf8(key.to_vec()) {
+        for (key_bytes, value_bytes) in self.iterator_with_opt(cf.clone(), options)?.into_iter() {
+            match self.deserialize::<K>(key_bytes.to_vec()) {
                 Ok(key) => {
-                    match self.deserialize::<V>(value.to_vec()) {
+                    match self.deserialize::<V>(value_bytes.to_vec()) {
                         Ok(value) => {
                             collection.insert(key, value);
                         }
                         Err(error) => {
                             log::error!("Failed to deserialize value: {:?}", error);
-                            let _ = self.delete(cf.clone(), key);
+                            let _ = self.delete(cf.clone(), key_bytes);
                         }
                     };
                 }
-                Err(error) => log::error!("Failed to deserialize key: {:?}", error),
+                Err(_) => log::error!("Failed to deserialize key"),
             };
         }
 
@@ -231,22 +273,23 @@ impl Store {
         K: DeserializeOwned + std::cmp::Eq + std::hash::Hash,
         V: DeserializeOwned,
     {
-        let mut collection = HashMap::new();
+        self.iterator_serialized_with_opt(cf, IteratorOptions::default())
+    }
 
-        for (key_bytes, value_bytes) in self.iterator(cf.clone())?.iter() {
-            match self.deserialize::<K>(key_bytes.to_vec()) {
-                Ok(key) => {
-                    match self.deserialize::<V>(value_bytes.to_vec()) {
-                        Ok(value) => {
-                            collection.insert(key, value);
-                        }
-                        Err(error) => {
-                            log::error!("Failed to deserialize value: {:?}", error);
-                            let _ = self.delete(cf.clone(), key_bytes);
-                        }
-                    };
-                }
-                Err(error) => log::error!("Failed to deserialize key: {:?}", error),
+    pub fn iterator_key_serialized_with_opt<T>(
+        &self,
+        cf: Arc<BoundColumnFamily>,
+        options: IteratorOptions,
+    ) -> Result<Vec<T>, Error>
+    where
+        T: DeserializeOwned,
+    {
+        let mut collection: Vec<T> = Vec::new();
+
+        for key in self.iterator_with_opt(cf.clone(), options)?.into_keys() {
+            match self.deserialize::<T>(key.to_vec()) {
+                Ok(key) => collection.push(key),
+                Err(_) => log::error!("Failed to deserialize key"),
             };
         }
 
@@ -257,12 +300,23 @@ impl Store {
     where
         T: DeserializeOwned,
     {
+        self.iterator_key_serialized_with_opt(cf, IteratorOptions::default())
+    }
+
+    pub fn iterator_value_serialized_with_opt<T>(
+        &self,
+        cf: Arc<BoundColumnFamily>,
+        options: IteratorOptions,
+    ) -> Result<Vec<T>, Error>
+    where
+        T: DeserializeOwned,
+    {
         let mut collection: Vec<T> = Vec::new();
 
-        for key in self.iterator(cf.clone())?.into_keys() {
-            match self.deserialize::<T>(key.to_vec()) {
-                Ok(key) => collection.push(key),
-                Err(error) => log::error!("Failed to deserialize key: {:?}", error),
+        for value in self.iterator_with_opt(cf.clone(), options)?.into_values() {
+            match self.deserialize::<T>(value.to_vec()) {
+                Ok(value) => collection.push(value),
+                Err(error) => log::error!("Failed to deserialize value: {:?}", error),
             };
         }
 
@@ -273,16 +327,7 @@ impl Store {
     where
         T: DeserializeOwned,
     {
-        let mut collection: Vec<T> = Vec::new();
-
-        for value in self.iterator(cf.clone())?.into_values() {
-            match self.deserialize::<T>(value.to_vec()) {
-                Ok(value) => collection.push(value),
-                Err(error) => log::error!("Failed to deserialize value: {:?}", error),
-            };
-        }
-
-        Ok(collection)
+        self.iterator_value_serialized_with_opt(cf, IteratorOptions::default())
     }
 
     pub fn delete<K>(&self, cf: Arc<BoundColumnFamily>, key: K) -> Result<(), Error>

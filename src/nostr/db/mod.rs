@@ -4,31 +4,41 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use nostr_sdk::nostr::Contact;
-use nostr_sdk::nostr::{secp256k1::XOnlyPublicKey, Event};
+use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
+use nostr_sdk::nostr::{Contact, Sha256Hash};
 use nostr_sdk::Result;
 
 pub mod model;
 mod rocksdb;
 mod util;
 
-use self::model::Profile;
-use self::rocksdb::{BoundColumnFamily, Store as RocksStore, WriteBatch, WriteSerializedBatch};
+use self::model::{Profile, TextNote};
+use self::rocksdb::{
+    BoundColumnFamily, IteratorOptions, Store as RocksStore, WriteBatch, WriteSerializedBatch,
+};
 
 #[derive(Debug, Clone)]
 pub struct Store {
     db: RocksStore,
 }
 
-const EVENT_CF: &str = "event";
+//const EVENT_CF: &str = "event";
 const AUTHOR_CF: &str = "author";
 const CONTACT_CF: &str = "contact";
 const PROFILE_CF: &str = "profile";
 const CHAT_CF: &str = "chat";
 const CHANNEL_CF: &str = "channel";
+const TEXTNOTE_CF: &str = "textnote";
+const TEXTNOTE_BY_TIMESTAMP: &str = "textnotebytimestamp";
 
 const COLUMN_FAMILIES: &[&str] = &[
-    EVENT_CF, AUTHOR_CF, CONTACT_CF, PROFILE_CF, CHAT_CF, CHANNEL_CF,
+    AUTHOR_CF,
+    CONTACT_CF,
+    PROFILE_CF,
+    CHAT_CF,
+    CHANNEL_CF,
+    TEXTNOTE_CF,
+    TEXTNOTE_BY_TIMESTAMP,
 ];
 
 impl Store {
@@ -41,9 +51,9 @@ impl Store {
         })
     }
 
-    fn event_cf(&self) -> Arc<BoundColumnFamily> {
+    /* fn event_cf(&self) -> Arc<BoundColumnFamily> {
         self.db.cf_handle(EVENT_CF)
-    }
+    } */
 
     fn author_cf(&self) -> Arc<BoundColumnFamily> {
         self.db.cf_handle(AUTHOR_CF)
@@ -57,7 +67,15 @@ impl Store {
         self.db.cf_handle(CONTACT_CF)
     }
 
-    pub fn save_event(&self, event: &Event) -> Result<()> {
+    fn textnote_cf(&self) -> Arc<BoundColumnFamily> {
+        self.db.cf_handle(TEXTNOTE_CF)
+    }
+
+    fn textnote_by_timestamp(&self) -> Arc<BoundColumnFamily> {
+        self.db.cf_handle(TEXTNOTE_BY_TIMESTAMP)
+    }
+
+    /* pub fn save_event(&self, event: &Event) -> Result<()> {
         Ok(self
             .db
             .put_serialized(self.event_cf(), util::event_prefix(event.id)?, event)?)
@@ -75,7 +93,7 @@ impl Store {
 
     pub fn get_events(&self) -> Result<Vec<Event>> {
         Ok(self.db.iterator_value_serialized(self.event_cf())?)
-    }
+    } */
 
     pub fn set_profile(&self, public_key: XOnlyPublicKey, profile: Profile) -> Result<()> {
         Ok(self.db.put(
@@ -125,6 +143,44 @@ impl Store {
 
     pub fn get_authors(&self) -> Result<Vec<XOnlyPublicKey>> {
         Ok(self.db.iterator_key_serialized(self.author_cf())?)
+    }
+
+    pub fn set_textnote(&self, event_id: Sha256Hash, note: TextNote) -> Result<()> {
+        let mut batch = WriteBatch::default();
+
+        batch.put_cf(
+            &self.textnote_by_timestamp(),
+            note.timestamp.to_be_bytes(),
+            self.db.serialize(event_id)?,
+        );
+
+        batch.put_cf(
+            &self.textnote_cf(),
+            self.db.serialize(event_id)?,
+            self.db.serialize(note)?,
+        );
+
+        Ok(self.db.write(batch)?)
+    }
+
+    pub fn get_textnote(&self, event_id: Sha256Hash) -> Result<TextNote> {
+        Ok(self
+            .db
+            .get_deserialized(self.textnote_cf(), self.db.serialize(event_id)?)?)
+    }
+
+    pub fn get_textnotes_with_limit(&self, limit: usize) -> Result<Vec<TextNote>> {
+        let hashes: Vec<Sha256Hash> = self.db.iterator_value_serialized_with_opt(
+            self.textnote_by_timestamp(),
+            IteratorOptions::WitLimit(limit, false),
+        )?;
+        let mut collection = Vec::new();
+
+        for hash in hashes.into_iter() {
+            collection.push(self.get_textnote(hash)?);
+        }
+
+        Ok(collection)
     }
 
     pub fn flush(&self) {

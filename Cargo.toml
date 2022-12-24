@@ -23,7 +23,7 @@ nostr-sdk = { path = "../nostr-rs-sdk/crates/nostr-sdk" }
 # notify-rust = "4.6.0"
 once_cell = "1"
 reqwest = { version = "0.11.13", default-features = false, features = ["json", "rustls-tls-webpki-roots"] }
-rocksdb = { version = "0.17.0", default-features = false, features = ["zstd", "multi-threaded-cf"] }
+rocksdb = { version = "0.19.0", default-features = false, features = ["zstd", "multi-threaded-cf"] }
 serde = "1.0"
 serde_json = "1.0"
 thiserror = "1.0"

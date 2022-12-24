@@ -6,7 +6,7 @@ use nostr_sdk::nostr::SubscriptionFilter;
 pub struct Filters {
     pub contact_list: SubscriptionFilter,
     pub encrypted_dm: SubscriptionFilter,
-    pub authors_metadata: SubscriptionFilter,
+    pub following_authors: SubscriptionFilter,
 }
 
 impl Filters {
@@ -14,7 +14,7 @@ impl Filters {
         vec![
             self.contact_list.clone(),
             self.encrypted_dm.clone(),
-            self.authors_metadata.clone(),
+            self.following_authors.clone(),
         ]
     }
 }
