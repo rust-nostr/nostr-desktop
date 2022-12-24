@@ -89,13 +89,7 @@ where
                 let mut notifications = client.notifications();
                 while let Ok(notification) = notifications.recv().await {
                     if let RelayPoolNotifications::ReceivedEvent(event) = notification {
-                        let mut authors: Vec<XOnlyPublicKey> = Vec::new();
-
-                        if let Err(e) = store.save_events(vec![event.clone()]) {
-                            log::error!("Impossible to save event: {}", e.to_string());
-                        }
-
-                        authors.push(event.pubkey);
+                        let mut authors: Vec<XOnlyPublicKey> = vec![event.pubkey];
 
                         match event.kind {
                             Kind::Base(KindBase::Metadata) => {
@@ -161,6 +155,10 @@ where
 
                         if let Err(e) = store.set_authors(authors) {
                             log::error!("Impossible to save authors: {}", e.to_string());
+                        }
+
+                        if let Err(e) = store.save_event(&event) {
+                            log::error!("Impossible to save event: {}", e.to_string());
                         }
 
                         sender.send(event).ok();

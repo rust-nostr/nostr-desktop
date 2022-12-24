@@ -57,6 +57,12 @@ impl Store {
         self.db.cf_handle(CONTACT_CF)
     }
 
+    pub fn save_event(&self, event: &Event) -> Result<()> {
+        Ok(self
+            .db
+            .put_serialized(self.event_cf(), util::event_prefix(event.id)?, event)?)
+    }
+
     pub fn save_events(&self, events: Vec<Event>) -> Result<()> {
         let mut batch = WriteBatch::default();
 

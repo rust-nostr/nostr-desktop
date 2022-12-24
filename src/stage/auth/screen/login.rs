@@ -52,8 +52,8 @@ impl State for LoginState {
                 LoginMessage::ButtonPressed => match Keys::from_sk_str(&self.secret_key) {
                     Ok(keys) => match Self::open_db(&keys) {
                         Ok(store) => {
-                            return Command::perform(async move {}, |_| {
-                                Message::LoginResult(Client::new(keys), store)
+                            return Command::perform(async move {}, move |_| {
+                                Message::LoginResult(Client::new(&keys), store)
                             })
                         }
                         Err(e) => self.error = Some(e.to_string()),
