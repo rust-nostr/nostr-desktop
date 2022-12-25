@@ -14,7 +14,7 @@ mod util;
 
 use self::model::{Profile, TextNote};
 use self::rocksdb::{
-    BoundColumnFamily, IteratorOptions, Store as RocksStore, WriteBatch, WriteSerializedBatch,
+    BoundColumnFamily, IteratorMode, Store as RocksStore, WriteBatch, WriteSerializedBatch,
 };
 
 #[derive(Debug, Clone)]
@@ -78,14 +78,14 @@ impl Store {
     /* pub fn save_event(&self, event: &Event) -> Result<()> {
         Ok(self
             .db
-            .put_serialized(self.event_cf(), util::event_prefix(event.id)?, event)?)
+            .put_serialized(self.event_cf(), util::hash_prefix(event.id)?, event)?)
     }
 
     pub fn save_events(&self, events: Vec<Event>) -> Result<()> {
         let mut batch = WriteBatch::default();
 
         for event in events.iter() {
-            batch.put_serialized(self.event_cf(), util::event_prefix(event.id)?, event)?;
+            batch.put_serialized(self.event_cf(), util::hash_prefix(event.id)?, event)?;
         }
 
         Ok(self.db.write(batch)?)
@@ -148,17 +148,23 @@ impl Store {
     pub fn set_textnote(&self, event_id: Sha256Hash, note: TextNote) -> Result<()> {
         let mut batch = WriteBatch::default();
 
-        batch.put_cf(
-            &self.textnote_by_timestamp(),
-            note.timestamp.to_be_bytes(),
-            self.db.serialize(event_id)?,
-        );
+        let event_id_prefix = util::hash_prefix(event_id);
 
-        batch.put_cf(
-            &self.textnote_cf(),
-            self.db.serialize(event_id)?,
-            self.db.serialize(note)?,
-        );
+        let timestamp = note.timestamp.to_be_bytes();
+        if !self
+            .db
+            .key_may_exist(self.textnote_by_timestamp(), timestamp)
+        {
+            batch.put_cf(&self.textnote_by_timestamp(), timestamp, event_id_prefix);
+        }
+
+        if !self.db.key_may_exist(self.textnote_cf(), event_id_prefix) {
+            batch.put_cf(
+                &self.textnote_cf(),
+                event_id_prefix,
+                self.db.serialize(note)?,
+            );
+        }
 
         Ok(self.db.write(batch)?)
     }
@@ -166,21 +172,23 @@ impl Store {
     pub fn get_textnote(&self, event_id: Sha256Hash) -> Result<TextNote> {
         Ok(self
             .db
-            .get_deserialized(self.textnote_cf(), self.db.serialize(event_id)?)?)
+            .get_deserialized(self.textnote_cf(), util::hash_prefix(event_id))?)
     }
 
-    pub fn get_textnotes_with_limit(&self, limit: usize) -> Result<Vec<TextNote>> {
-        let hashes: Vec<Sha256Hash> = self.db.iterator_value_serialized_with_opt(
-            self.textnote_by_timestamp(),
-            IteratorOptions::WitLimit(limit, false),
-        )?;
-        let mut collection = Vec::new();
+    pub fn get_textnotes_with_limit(&self, limit: usize) -> Vec<TextNote> {
+        let ids: Vec<Vec<u8>> = self
+            .db
+            .iterator_with_mode(self.textnote_by_timestamp(), IteratorMode::End)
+            .take(limit)
+            .map(|(_, v)| v)
+            .collect();
 
-        for hash in hashes.into_iter() {
-            collection.push(self.get_textnote(hash)?);
-        }
-
-        Ok(collection)
+        self.db
+            .multi_get(self.textnote_cf(), ids)
+            .flatten()
+            .flatten()
+            .filter_map(|slice| self.db.deserialize(&slice).ok())
+            .collect()
     }
 
     pub fn flush(&self) {

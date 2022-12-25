@@ -12,7 +12,7 @@ use crate::nostr::db::model::TextNote;
 use crate::stage::dashboard::component::Dashboard;
 use crate::stage::dashboard::{Context, State};
 
-const FEED_LIMIT: usize = 30;
+const FEED_LIMIT: usize = 50;
 
 #[derive(Debug, Clone)]
 pub enum HomeMessage {
@@ -41,12 +41,8 @@ impl State for HomeState {
 
     fn load(&mut self, ctx: &Context) -> Command<Message> {
         self.loaded = true;
-        if let Ok(notes) = ctx.store.get_textnotes_with_limit(FEED_LIMIT) {
-            self.notes = notes.into();
-            Command::perform(async {}, |_| Message::Tick)
-        } else {
-            Command::none()
-        }
+        self.notes = ctx.store.get_textnotes_with_limit(FEED_LIMIT).into();
+        Command::perform(async {}, |_| Message::Tick)
     }
 
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
