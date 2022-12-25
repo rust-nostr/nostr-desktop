@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
+use rocksdb::DBPinnableSlice;
 pub use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType, Direction,
     IteratorMode, WriteBatch, WriteOptions,
@@ -142,6 +143,13 @@ impl Store {
         }
     }
 
+    pub fn key_may_exist<K>(&self, cf: Arc<BoundColumnFamily>, key: K) -> bool
+    where
+        K: AsRef<[u8]>,
+    {
+        self.db.key_may_exist_cf(&cf, key)
+    }
+
     pub fn get<K>(&self, cf: Arc<BoundColumnFamily>, key: K) -> Result<Vec<u8>, Error>
     where
         K: AsRef<[u8]>,
@@ -151,6 +159,19 @@ impl Store {
             Ok(None) => Err(Error::ValueNotFound),
             Err(_) => Err(Error::FailedToGet),
         }
+    }
+
+    pub fn multi_get<K, I>(
+        &self,
+        cf: Arc<BoundColumnFamily>,
+        keys: I,
+    ) -> impl Iterator<Item = Result<Option<DBPinnableSlice<'_>>, Error>>
+    where
+        K: AsRef<[u8]>,
+        I: IntoIterator<Item = K>,
+    {
+        let result = self.db.batched_multi_get_cf(&cf, keys, false);
+        result.into_iter().map(|r| r.map_err(Error::RocksDb))
     }
 
     pub fn get_deserialized<K, V>(&self, cf: Arc<BoundColumnFamily>, key: K) -> Result<V, Error>
