@@ -64,10 +64,10 @@ impl Auth {
                 self.state = new_state(&self.context);
                 (self.state.update(&mut self.context, message), None)
             }
-            Message::LoginResult(client, store) => (
-                Command::none(),
-                Some(NostrDesktop::Dashboard(App::new(client, store).0)),
-            ),
+            Message::LoginResult(client, store) => {
+                let app = App::new(client, store);
+                (app.1, Some(NostrDesktop::Dashboard(app.0)))
+            }
             _ => (self.state.update(&mut self.context, message), None),
         }
     }

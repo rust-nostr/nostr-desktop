@@ -60,7 +60,7 @@ impl App {
             state: new_state(&context),
             context,
         };
-        (app, Command::none())
+        (app, Command::perform(async {}, |_| Message::Tick))
     }
 
     pub fn title(&self) -> String {
