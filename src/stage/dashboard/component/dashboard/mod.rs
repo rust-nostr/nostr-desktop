@@ -34,11 +34,14 @@ impl Dashboard {
                     )
                     .push(Rule::vertical(1))
                     .push(
-                        Container::new(Scrollable::new(content.spacing(20).padding(20)))
-                            //.max_width(600)
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .center_x(),
+                        Container::new(
+                            Scrollable::new(content.spacing(20).padding(20))
+                                .on_scroll(Message::Scrolled),
+                        )
+                        //.max_width(600)
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .center_x(),
                     ),
             )
             //.max_width(1200)

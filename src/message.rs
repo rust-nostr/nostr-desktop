@@ -27,6 +27,7 @@ pub enum DashboardMessage {
 pub enum Message {
     Tick,
     Sync(Event),
+    Scrolled(f32),
     SetAuthStage(auth::Stage),
     SetDashboardStage(dashboard::Stage),
     LoginResult(Client, Store),

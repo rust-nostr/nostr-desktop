@@ -1,18 +1,17 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::collections::VecDeque;
-
 use iced::widget::{Column, Text};
 use iced::{Command, Element};
 use nostr_sdk::nostr::Event;
+use rocksdb::Direction;
 
 use crate::message::{DashboardMessage, Message};
 use crate::nostr::db::model::TextNote;
 use crate::stage::dashboard::component::Dashboard;
 use crate::stage::dashboard::{Context, State};
 
-const FEED_LIMIT: usize = 50;
+const FEED_LIMIT: usize = 40;
 
 #[derive(Debug, Clone)]
 pub enum HomeMessage {
@@ -22,14 +21,18 @@ pub enum HomeMessage {
 #[derive(Debug, Default)]
 pub struct HomeState {
     loaded: bool,
-    notes: VecDeque<TextNote>,
+    last_timestamp: u64,
+    notes: Vec<TextNote>,
+    latest_offset: f32,
 }
 
 impl HomeState {
     pub fn new() -> Self {
         Self {
             loaded: false,
-            notes: VecDeque::with_capacity(FEED_LIMIT),
+            last_timestamp: 0,
+            notes: Vec::with_capacity(FEED_LIMIT),
+            latest_offset: 0.0,
         }
     }
 }
@@ -41,7 +44,10 @@ impl State for HomeState {
 
     fn load(&mut self, ctx: &Context) -> Command<Message> {
         self.loaded = true;
-        self.notes = ctx.store.get_textnotes_with_limit(FEED_LIMIT).into();
+        self.notes = ctx.store.get_textnotes_with_limit(FEED_LIMIT);
+        if let Some(note) = self.notes.last() {
+            self.last_timestamp = note.timestamp;
+        }
         Command::perform(async {}, |_| Message::Tick)
     }
 
@@ -50,15 +56,29 @@ impl State for HomeState {
             self.load(ctx);
         }
 
-        if let Message::Dashboard(DashboardMessage::Home(msg)) = message {
-            match msg {
+        match message {
+            Message::Scrolled(offset) => {
+                self.latest_offset = offset;
+
+                if offset > 0.9 {
+                    let more_notes = ctx.store.get_textnotes_from_timestamp(
+                        self.last_timestamp,
+                        Direction::Reverse,
+                        FEED_LIMIT,
+                    );
+                    self.notes = [&self.notes, &more_notes[1..]].concat();
+                }
+            }
+            Message::Dashboard(DashboardMessage::Home(msg)) => match msg {
                 HomeMessage::PushTextNote(event) => {
                     if self.notes.len() > FEED_LIMIT {
-                        self.notes.pop_back();
+                        self.notes.pop();
                     }
-                    self.notes.push_front(TextNote::from(event));
+                    self.notes.push(TextNote::from(event));
+                    self.notes.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
                 }
-            };
+            },
+            _ => (),
         }
 
         Command::none()
