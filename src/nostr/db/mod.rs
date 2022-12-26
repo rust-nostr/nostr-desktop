@@ -14,7 +14,8 @@ mod util;
 
 use self::model::{Profile, TextNote};
 use self::rocksdb::{
-    BoundColumnFamily, IteratorMode, Store as RocksStore, WriteBatch, WriteSerializedBatch,
+    BoundColumnFamily, Direction, IteratorMode, Store as RocksStore, WriteBatch,
+    WriteSerializedBatch,
 };
 
 #[derive(Debug, Clone)]
@@ -32,6 +33,7 @@ const TEXTNOTE_CF: &str = "textnote";
 const TEXTNOTE_BY_TIMESTAMP: &str = "textnotebytimestamp";
 
 const COLUMN_FAMILIES: &[&str] = &[
+    //EVENT_CF,
     AUTHOR_CF,
     CONTACT_CF,
     PROFILE_CF,
@@ -75,17 +77,17 @@ impl Store {
         self.db.cf_handle(TEXTNOTE_BY_TIMESTAMP)
     }
 
-    /* pub fn save_event(&self, event: &Event) -> Result<()> {
+    /* pub fn save_event(&self, event: NostrEvent) -> Result<()> {
         Ok(self
             .db
-            .put_serialized(self.event_cf(), util::hash_prefix(event.id)?, event)?)
+            .put_serialized(self.event_cf(), util::hash_prefix(event.id), &Event::from(event))?)
     }
 
-    pub fn save_events(&self, events: Vec<Event>) -> Result<()> {
+    pub fn save_events(&self, events: Vec<NostrEvent>) -> Result<()> {
         let mut batch = WriteBatch::default();
 
-        for event in events.iter() {
-            batch.put_serialized(self.event_cf(), util::hash_prefix(event.id)?, event)?;
+        for event in events.into_iter() {
+            batch.put_serialized(self.event_cf(), util::hash_prefix(event.id), &Event::from(event))?;
         }
 
         Ok(self.db.write(batch)?)
@@ -179,6 +181,30 @@ impl Store {
         let ids: Vec<Vec<u8>> = self
             .db
             .iterator_with_mode(self.textnote_by_timestamp(), IteratorMode::End)
+            .take(limit)
+            .map(|(_, v)| v)
+            .collect();
+
+        self.db
+            .multi_get(self.textnote_cf(), ids)
+            .flatten()
+            .flatten()
+            .filter_map(|slice| self.db.deserialize(&slice).ok())
+            .collect()
+    }
+
+    pub fn get_textnotes_from_timestamp(
+        &self,
+        timestamp: u64,
+        direction: Direction,
+        limit: usize,
+    ) -> Vec<TextNote> {
+        let ids: Vec<Vec<u8>> = self
+            .db
+            .iterator_with_mode(
+                self.textnote_by_timestamp(),
+                IteratorMode::From(&timestamp.to_be_bytes(), direction),
+            )
             .take(limit)
             .map(|(_, v)| v)
             .collect();
