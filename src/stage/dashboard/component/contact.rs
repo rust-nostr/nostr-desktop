@@ -5,6 +5,13 @@ use iced::widget::{image, Column, Container, Row, Text};
 use iced::{Alignment, Length};
 use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
 use nostr_sdk::nostr::Metadata;
+use once_cell::sync::Lazy;
+
+static UNKNOWN_IMG_PROFILE: Lazy<image::Handle> = Lazy::new(|| {
+    image::Handle::from_memory(
+        include_bytes!("../../../../static/imgs/unknown-img-profile.png").to_vec(),
+    )
+});
 
 #[derive(Debug)]
 pub struct Contact {
@@ -23,15 +30,15 @@ impl Contact {
     }
 
     pub fn view<'a, T: 'a>(&'a self) -> Container<'a, T> {
-        let image = if let Some(image) = self.image.clone() {
-            Column::new().push(
-                image::viewer(image)
-                    .height(Length::Units(40))
-                    .width(Length::Units(40)),
-            )
-        } else {
-            Column::new().push(Text::new("No image"))
-        };
+        let image = self
+            .image
+            .clone()
+            .unwrap_or_else(|| UNKNOWN_IMG_PROFILE.to_owned());
+        let image = Column::new().push(
+            image::viewer(image)
+                .height(Length::Units(40))
+                .width(Length::Units(40)),
+        );
 
         let mut info = Column::new();
 
