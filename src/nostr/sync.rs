@@ -91,83 +91,12 @@ where
             loop {
                 let mut notifications = client.notifications();
                 while let Ok(notification) = notifications.recv().await {
-                    if let RelayPoolNotifications::ReceivedEvent(event) = notification {
-                        let mut authors: Vec<XOnlyPublicKey> = vec![event.pubkey];
-
-                        match event.kind {
-                            Kind::Base(KindBase::TextNote) => {
-                                if let Err(e) =
-                                    store.set_textnote(event.id, TextNote::from(event.clone()))
-                                {
-                                    log::error!("Impossible to save text note: {}", e.to_string());
-                                }
-                            }
-                            Kind::Base(KindBase::Metadata) => {
-                                if let Ok(profile) = store.get_profile(event.pubkey) {
-                                    if event.created_at > profile.timestamp {
-                                        if let Ok(metadata) = Metadata::from_json(&event.content) {
-                                            if let Err(e) = store.set_profile(
-                                                event.pubkey,
-                                                Profile {
-                                                    metadata,
-                                                    timestamp: event.created_at,
-                                                },
-                                            ) {
-                                                log::error!(
-                                                    "Impossible to save profile: {}",
-                                                    e.to_string()
-                                                );
-                                            }
-                                        }
-                                    }
-                                } else if let Ok(metadata) = Metadata::from_json(&event.content) {
-                                    if let Err(e) = store.set_profile(
-                                        event.pubkey,
-                                        Profile {
-                                            metadata,
-                                            timestamp: event.created_at,
-                                        },
-                                    ) {
-                                        log::error!(
-                                            "Impossible to save profile: {}",
-                                            e.to_string()
-                                        );
-                                    }
-                                }
-                            }
-                            Kind::Base(KindBase::ContactList) => {
-                                let mut contact_list: Vec<Contact> = Vec::new();
-                                for tag in event.tags.clone().into_iter() {
-                                    let tag: Vec<String> = tag.as_vec();
-                                    if let Some(pk) = tag.get(1) {
-                                        if let Ok(pk) = XOnlyPublicKey::from_str(pk) {
-                                            authors.push(pk);
-
-                                            let relay_url = tag.get(2).cloned();
-                                            let alias = tag.get(3).cloned();
-                                            contact_list.push(Contact::new(
-                                                pk,
-                                                relay_url.unwrap_or_default(),
-                                                alias.unwrap_or_default(),
-                                            ));
-                                        }
-                                    }
-                                }
-                                if let Err(e) = store.set_contacts(contact_list) {
-                                    log::error!(
-                                        "Impossible to save contact list: {}",
-                                        e.to_string()
-                                    );
-                                }
-                            }
-                            _ => (),
-                        };
-
-                        if let Err(e) = store.set_authors(authors) {
-                            log::error!("Impossible to save authors: {}", e.to_string());
+                    match notification {
+                        RelayPoolNotifications::ReceivedEvent(event) => {
+                            process_event(&store, &event);
+                            sender.send(event).ok();
                         }
-
-                        sender.send(event).ok();
+                        RelayPoolNotifications::ReceivedMessage(_msg) => {}
                     }
                 }
             }
@@ -189,5 +118,71 @@ impl NostrSync {
             store,
             join: None,
         })
+    }
+}
+
+fn process_event(store: &Store, event: &Event) {
+    let mut authors: Vec<XOnlyPublicKey> = vec![event.pubkey];
+
+    match event.kind {
+        Kind::Base(KindBase::TextNote) => {
+            if let Err(e) = store.set_textnote(event.id, TextNote::from(event.clone())) {
+                log::error!("Impossible to save text note: {}", e.to_string());
+            }
+        }
+        Kind::Base(KindBase::Metadata) => {
+            if let Ok(profile) = store.get_profile(event.pubkey) {
+                if event.created_at > profile.timestamp {
+                    if let Ok(metadata) = Metadata::from_json(&event.content) {
+                        if let Err(e) = store.set_profile(
+                            event.pubkey,
+                            Profile {
+                                metadata,
+                                timestamp: event.created_at,
+                            },
+                        ) {
+                            log::error!("Impossible to save profile: {}", e.to_string());
+                        }
+                    }
+                }
+            } else if let Ok(metadata) = Metadata::from_json(&event.content) {
+                if let Err(e) = store.set_profile(
+                    event.pubkey,
+                    Profile {
+                        metadata,
+                        timestamp: event.created_at,
+                    },
+                ) {
+                    log::error!("Impossible to save profile: {}", e.to_string());
+                }
+            }
+        }
+        Kind::Base(KindBase::ContactList) => {
+            let mut contact_list: Vec<Contact> = Vec::new();
+            for tag in event.tags.clone().into_iter() {
+                let tag: Vec<String> = tag.as_vec();
+                if let Some(pk) = tag.get(1) {
+                    if let Ok(pk) = XOnlyPublicKey::from_str(pk) {
+                        authors.push(pk);
+
+                        let relay_url = tag.get(2).cloned();
+                        let alias = tag.get(3).cloned();
+                        contact_list.push(Contact::new(
+                            pk,
+                            relay_url.unwrap_or_default(),
+                            alias.unwrap_or_default(),
+                        ));
+                    }
+                }
+            }
+            if let Err(e) = store.set_contacts(contact_list) {
+                log::error!("Impossible to save contact list: {}", e.to_string());
+            }
+        }
+        _ => (),
+    };
+
+    if let Err(e) = store.set_authors(authors) {
+        log::error!("Impossible to save authors: {}", e.to_string());
     }
 }
