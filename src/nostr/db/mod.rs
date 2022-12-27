@@ -5,17 +5,16 @@ use std::path::Path;
 use std::sync::Arc;
 
 use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
-use nostr_sdk::nostr::{Contact, Sha256Hash};
+use nostr_sdk::nostr::{Contact, Event, Kind, KindBase, Sha256Hash};
 use nostr_sdk::Result;
 
 pub mod model;
 mod rocksdb;
 mod util;
 
-use self::model::{Profile, TextNote};
+use self::model::Profile;
 use self::rocksdb::{
-    BoundColumnFamily, Direction, IteratorMode, Store as RocksStore, WriteBatch,
-    WriteSerializedBatch,
+    BoundColumnFamily, IteratorMode, Store as RocksStore, WriteBatch, WriteSerializedBatch,
 };
 
 #[derive(Debug, Clone)]
@@ -23,23 +22,20 @@ pub struct Store {
     db: RocksStore,
 }
 
-//const EVENT_CF: &str = "event";
+// Main CFs
+const EVENT_CF: &str = "event";
 const AUTHOR_CF: &str = "author";
 const CONTACT_CF: &str = "contact";
 const PROFILE_CF: &str = "profile";
-const CHAT_CF: &str = "chat";
-const CHANNEL_CF: &str = "channel";
-const TEXTNOTE_CF: &str = "textnote";
+
+// Index CFs
 const TEXTNOTE_BY_TIMESTAMP: &str = "textnotebytimestamp";
 
 const COLUMN_FAMILIES: &[&str] = &[
-    //EVENT_CF,
+    EVENT_CF,
     AUTHOR_CF,
     CONTACT_CF,
     PROFILE_CF,
-    CHAT_CF,
-    CHANNEL_CF,
-    TEXTNOTE_CF,
     TEXTNOTE_BY_TIMESTAMP,
 ];
 
@@ -53,9 +49,9 @@ impl Store {
         })
     }
 
-    /* fn event_cf(&self) -> Arc<BoundColumnFamily> {
+    fn event_cf(&self) -> Arc<BoundColumnFamily> {
         self.db.cf_handle(EVENT_CF)
-    } */
+    }
 
     fn author_cf(&self) -> Arc<BoundColumnFamily> {
         self.db.cf_handle(AUTHOR_CF)
@@ -69,33 +65,59 @@ impl Store {
         self.db.cf_handle(CONTACT_CF)
     }
 
-    fn textnote_cf(&self) -> Arc<BoundColumnFamily> {
-        self.db.cf_handle(TEXTNOTE_CF)
-    }
-
     fn textnote_by_timestamp(&self) -> Arc<BoundColumnFamily> {
         self.db.cf_handle(TEXTNOTE_BY_TIMESTAMP)
     }
 
-    /* pub fn save_event(&self, event: NostrEvent) -> Result<()> {
+    pub fn get_event(&self, event_id: Sha256Hash) -> Result<Event> {
         Ok(self
             .db
-            .put_serialized(self.event_cf(), util::hash_prefix(event.id), &Event::from(event))?)
+            .get_deserialized(self.event_cf(), util::hash_prefix(event_id))?)
     }
 
-    pub fn save_events(&self, events: Vec<NostrEvent>) -> Result<()> {
+    pub fn save_event(&self, event: &Event) -> Result<()> {
         let mut batch = WriteBatch::default();
 
-        for event in events.into_iter() {
-            batch.put_serialized(self.event_cf(), util::hash_prefix(event.id), &Event::from(event))?;
+        let event_id_prefix = util::hash_prefix(event.id);
+
+        match event.kind {
+            Kind::Base(KindBase::TextNote) => {
+                let timestamp = event.created_at.to_be_bytes();
+
+                if let Ok(prev_ids) = self.db.get_deserialized::<[u8; 8], Vec<Vec<u8>>>(
+                    self.textnote_by_timestamp(),
+                    timestamp,
+                ) {
+                    let event_id_prefix = event_id_prefix.to_vec();
+                    if !prev_ids.contains(&event_id_prefix) {
+                        batch.put_serialized(
+                            self.textnote_by_timestamp(),
+                            timestamp,
+                            &[prev_ids, vec![event_id_prefix]].concat(),
+                        )?;
+                    }
+                } else {
+                    batch.put_serialized(
+                        self.textnote_by_timestamp(),
+                        timestamp,
+                        &[event_id_prefix],
+                    )?;
+                }
+
+                if self
+                    .db
+                    .key_may_exist(self.textnote_by_timestamp(), timestamp)
+                {}
+            }
+            _ => (),
+        };
+
+        if !self.db.key_may_exist(self.event_cf(), event_id_prefix) {
+            batch.put_serialized(self.event_cf(), event_id_prefix, event)?;
         }
 
         Ok(self.db.write(batch)?)
     }
-
-    pub fn get_events(&self) -> Result<Vec<Event>> {
-        Ok(self.db.iterator_value_serialized(self.event_cf())?)
-    } */
 
     pub fn set_profile(&self, public_key: XOnlyPublicKey, profile: Profile) -> Result<()> {
         Ok(self.db.put(
@@ -121,10 +143,13 @@ impl Store {
         Ok(self.db.write(batch)?)
     }
 
-    pub fn get_contacts(&self) -> Result<Vec<Contact>> {
-        let mut contacts = self.db.iterator_value_serialized(self.contact_cf())?;
+    pub fn get_contacts(&self) -> Vec<Contact> {
+        let mut contacts: Vec<Contact> = self
+            .db
+            .iterator_value_serialized_with_mode(self.contact_cf(), IteratorMode::Start)
+            .collect();
         contacts.sort();
-        Ok(contacts)
+        contacts
     }
 
     pub fn set_author(&self, public_key: XOnlyPublicKey) -> Result<()> {
@@ -147,70 +172,23 @@ impl Store {
         Ok(self.db.iterator_key_serialized(self.author_cf())?)
     }
 
-    pub fn set_textnote(&self, event_id: Sha256Hash, note: TextNote) -> Result<()> {
-        let mut batch = WriteBatch::default();
-
-        let event_id_prefix = util::hash_prefix(event_id);
-
-        let timestamp = note.timestamp.to_be_bytes();
-        if !self
+    pub fn get_feed_ids(&self, limit: usize, page: usize) -> Vec<Vec<u8>> {
+        let res: Vec<Vec<Vec<u8>>> = self
             .db
-            .key_may_exist(self.textnote_by_timestamp(), timestamp)
-        {
-            batch.put_cf(&self.textnote_by_timestamp(), timestamp, event_id_prefix);
-        }
-
-        if !self.db.key_may_exist(self.textnote_cf(), event_id_prefix) {
-            batch.put_cf(
-                &self.textnote_cf(),
-                event_id_prefix,
-                self.db.serialize(note)?,
-            );
-        }
-
-        Ok(self.db.write(batch)?)
-    }
-
-    pub fn get_textnote(&self, event_id: Sha256Hash) -> Result<TextNote> {
-        Ok(self
-            .db
-            .get_deserialized(self.textnote_cf(), util::hash_prefix(event_id))?)
-    }
-
-    pub fn get_textnotes_with_limit(&self, limit: usize) -> Vec<TextNote> {
-        let ids: Vec<Vec<u8>> = self
-            .db
-            .iterator_with_mode(self.textnote_by_timestamp(), IteratorMode::End)
+            .iterator_value_serialized_with_mode(self.textnote_by_timestamp(), IteratorMode::End)
+            .skip(limit * page)
             .take(limit)
-            .map(|(_, v)| v)
             .collect();
-
-        self.db
-            .multi_get(self.textnote_cf(), ids)
-            .flatten()
-            .flatten()
-            .filter_map(|slice| self.db.deserialize(&slice).ok())
-            .collect()
+        res.concat()
     }
 
-    pub fn get_textnotes_from_timestamp(
-        &self,
-        timestamp: u64,
-        direction: Direction,
-        limit: usize,
-    ) -> Vec<TextNote> {
-        let ids: Vec<Vec<u8>> = self
-            .db
-            .iterator_with_mode(
-                self.textnote_by_timestamp(),
-                IteratorMode::From(&timestamp.to_be_bytes(), direction),
-            )
-            .take(limit)
-            .map(|(_, v)| v)
-            .collect();
-
+    pub fn get_feed_by_ids<K, I>(&self, ids: I) -> Vec<Event>
+    where
+        K: AsRef<[u8]>,
+        I: IntoIterator<Item = K>,
+    {
         self.db
-            .multi_get(self.textnote_cf(), ids)
+            .multi_get(self.event_cf(), ids)
             .flatten()
             .flatten()
             .filter_map(|slice| self.db.deserialize(&slice).ok())

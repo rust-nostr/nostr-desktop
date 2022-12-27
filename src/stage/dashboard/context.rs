@@ -28,6 +28,7 @@ impl Default for Stage {
     }
 }
 
+#[derive(Clone)]
 pub struct Context {
     //pub config: ConfigContext,
     pub stage: Stage,

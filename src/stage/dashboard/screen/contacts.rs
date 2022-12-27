@@ -43,23 +43,19 @@ impl State for ContactsState {
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
         let mut commands = Vec::new();
 
-        if let Ok(contacts) = ctx.store.get_contacts() {
-            for contact in contacts.iter() {
-                if let Ok(profile) = ctx.store.get_profile(contact.pk) {
-                    let metadata = profile.metadata;
+        for contact in ctx.store.get_contacts().iter() {
+            if let Ok(profile) = ctx.store.get_profile(contact.pk) {
+                let metadata = profile.metadata;
 
-                    self.contacts
-                        .entry(contact.pk)
-                        .and_modify(|c| c.metadata = metadata.clone())
-                        .or_insert_with(|| Contact::new(contact.pk, metadata));
-                } else {
-                    self.contacts
-                        .entry(contact.pk)
-                        .or_insert_with(|| Contact::new(contact.pk, Metadata::default()));
-                }
+                self.contacts
+                    .entry(contact.pk)
+                    .and_modify(|c| c.metadata = metadata.clone())
+                    .or_insert_with(|| Contact::new(contact.pk, metadata));
+            } else {
+                self.contacts
+                    .entry(contact.pk)
+                    .or_insert_with(|| Contact::new(contact.pk, Metadata::default()));
             }
-        } else {
-            self.error = Some("Impossible to get contacts".to_string());
         }
 
         if let Message::Dashboard(DashboardMessage::Contacts(msg)) = message {

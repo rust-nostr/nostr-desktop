@@ -2,8 +2,7 @@
 // Distributed under the MIT software license
 
 use iced::widget::{button, Button, Container, Row, Text};
-use iced::{theme, Alignment};
-use iced::{Background, Length, Theme, Vector};
+use iced::{theme, Alignment, Background, Length, Theme, Vector};
 
 use crate::message::Message;
 use crate::stage::dashboard::{Context, Stage};

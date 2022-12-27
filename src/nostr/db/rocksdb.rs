@@ -289,27 +289,16 @@ impl Store {
         &self,
         cf: Arc<BoundColumnFamily>,
         mode: IteratorMode,
-    ) -> Result<Vec<T>, Error>
+    ) -> impl Iterator<Item = T> + '_
     where
         T: DeserializeOwned,
     {
-        let mut collection: Vec<T> = Vec::new();
-
-        for (_, value) in self.iterator_with_mode(cf.clone(), mode) {
-            match self.deserialize::<T>(&value) {
-                Ok(value) => collection.push(value),
-                Err(error) => log::error!("Failed to deserialize value: {:?}", error),
-            };
-        }
-
-        Ok(collection)
-    }
-
-    pub fn iterator_value_serialized<T>(&self, cf: Arc<BoundColumnFamily>) -> Result<Vec<T>, Error>
-    where
-        T: DeserializeOwned,
-    {
-        self.iterator_value_serialized_with_mode(cf, IteratorMode::Start)
+        self.db
+            .iterator_cf(&cf, mode)
+            .into_iter()
+            .filter_map(|r| r.ok())
+            .map(|(_, v)| v.to_vec())
+            .filter_map(|slice| self.deserialize(&slice).ok())
     }
 
     pub fn delete<K>(&self, cf: Arc<BoundColumnFamily>, key: K) -> Result<(), Error>

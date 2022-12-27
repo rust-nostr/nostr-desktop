@@ -16,7 +16,7 @@ use tokio::sync::mpsc;
 use crate::nostr::db::Store;
 use crate::RUNTIME;
 
-use super::db::model::{Profile, TextNote};
+use super::db::model::Profile;
 use super::filters::Filters;
 
 pub struct NostrSync {
@@ -125,11 +125,6 @@ fn process_event(store: &Store, event: &Event) {
     let mut authors: Vec<XOnlyPublicKey> = vec![event.pubkey];
 
     match event.kind {
-        Kind::Base(KindBase::TextNote) => {
-            if let Err(e) = store.set_textnote(event.id, TextNote::from(event.clone())) {
-                log::error!("Impossible to save text note: {}", e.to_string());
-            }
-        }
         Kind::Base(KindBase::Metadata) => {
             if let Ok(profile) = store.get_profile(event.pubkey) {
                 if event.created_at > profile.timestamp {
@@ -179,7 +174,11 @@ fn process_event(store: &Store, event: &Event) {
                 log::error!("Impossible to save contact list: {}", e.to_string());
             }
         }
-        _ => (),
+        _ => {
+            if let Err(e) = store.save_event(event) {
+                log::error!("Impossible to save text note: {}", e.to_string());
+            }
+        }
     };
 
     if let Err(e) = store.set_authors(authors) {
