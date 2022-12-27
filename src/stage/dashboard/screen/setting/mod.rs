@@ -52,7 +52,7 @@ impl State for SettingState {
                 SettingMessage::GoToRelays,
             )));
         let content = Column::new().push(button);
-        Dashboard::new().view(ctx, content)
+        Dashboard::new().view(ctx, content.spacing(20).padding(20))
     }
 }
 

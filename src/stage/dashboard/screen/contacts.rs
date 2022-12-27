@@ -107,7 +107,7 @@ impl State for ContactsState {
             }))
             .push(contacts);
 
-        Dashboard::new().view(ctx, content)
+        Dashboard::new().view(ctx, content.spacing(20).padding(20))
     }
 }
 

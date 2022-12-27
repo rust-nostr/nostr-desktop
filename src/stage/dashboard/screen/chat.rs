@@ -49,7 +49,7 @@ impl State for ChatState {
         }));
         //.push(messages);
 
-        Dashboard::new().view(ctx, content)
+        Dashboard::new().view(ctx, content.spacing(20).padding(20))
     }
 }
 

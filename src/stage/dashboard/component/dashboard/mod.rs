@@ -21,7 +21,10 @@ impl Dashboard {
         Self::default()
     }
 
-    pub fn view<'a>(&self, ctx: &Context, content: Column<'a, Message>) -> Element<'a, Message> {
+    pub fn view<'a, T>(&self, ctx: &Context, content: T) -> Element<'a, Message>
+    where
+        T: Into<Element<'a, Message>>,
+    {
         Column::new()
             .push(Navbar::view())
             .push(
@@ -34,14 +37,11 @@ impl Dashboard {
                     )
                     .push(Rule::vertical(1))
                     .push(
-                        Container::new(
-                            Scrollable::new(content.spacing(20).padding(20))
-                                .on_scroll(Message::Scrolled),
-                        )
-                        //.max_width(600)
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .center_x(),
+                        Container::new(Scrollable::new(content).on_scroll(Message::Scrolled))
+                            //.max_width(600)
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .center_x(),
                     ),
             )
             //.max_width(1200)

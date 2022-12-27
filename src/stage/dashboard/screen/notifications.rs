@@ -35,7 +35,7 @@ impl State for NotificationsState {
 
     fn view(&self, ctx: &Context) -> Element<Message> {
         let content = Column::new();
-        Dashboard::new().view(ctx, content)
+        Dashboard::new().view(ctx, content.spacing(20).padding(20))
     }
 }
 
