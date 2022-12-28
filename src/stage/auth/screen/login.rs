@@ -7,7 +7,7 @@ use nostr_sdk::nostr::key::{FromSkStr, Keys};
 use nostr_sdk::Client;
 
 use crate::message::Message;
-use crate::nostr::db::Store;
+use crate::nostr::db::{Store, DB_NAME};
 use crate::stage::auth::context::Context;
 use crate::stage::auth::State;
 use crate::util::dir;
@@ -34,9 +34,9 @@ impl LoginState {
         self.error = None;
     }
 
-    fn open_db(keys: &Keys) -> nostr_sdk::Result<Store> {
-        let account_dir = dir::account_dir(keys.public_key())?;
-        Store::open(account_dir)
+    fn open_db() -> nostr_sdk::Result<Store> {
+        let db_path = dir::default_dir()?.join(DB_NAME);
+        Ok(Store::open(db_path)?)
     }
 }
 
@@ -50,7 +50,7 @@ impl State for LoginState {
             match msg {
                 LoginMessage::SecretKeyChanged(secret_key) => self.secret_key = secret_key,
                 LoginMessage::ButtonPressed => match Keys::from_sk_str(&self.secret_key) {
-                    Ok(keys) => match Self::open_db(&keys) {
+                    Ok(keys) => match Self::open_db() {
                         Ok(store) => {
                             return Command::perform(async move {}, move |_| {
                                 Message::LoginResult(Client::new(&keys), store)

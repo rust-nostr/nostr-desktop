@@ -3,9 +3,9 @@
 
 use iced::widget::{image, Column, Container, Row, Text};
 use iced::{Alignment, Length};
-use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
-use nostr_sdk::nostr::Metadata;
 use once_cell::sync::Lazy;
+
+use crate::nostr::db::model::Profile;
 
 static UNKNOWN_IMG_PROFILE: Lazy<image::Handle> = Lazy::new(|| {
     image::Handle::from_memory(
@@ -15,16 +15,14 @@ static UNKNOWN_IMG_PROFILE: Lazy<image::Handle> = Lazy::new(|| {
 
 #[derive(Debug)]
 pub struct Contact {
-    pub public_key: XOnlyPublicKey,
-    pub metadata: Metadata,
+    pub profile: Profile,
     pub image: Option<image::Handle>,
 }
 
 impl Contact {
-    pub fn new(public_key: XOnlyPublicKey, metadata: Metadata) -> Self {
+    pub fn new(profile: Profile) -> Self {
         Self {
-            public_key,
-            metadata,
+            profile,
             image: None,
         }
     }
@@ -42,10 +40,10 @@ impl Contact {
 
         let mut info = Column::new();
 
-        if let Some(display_name) = self.metadata.display_name.clone() {
+        if let Some(display_name) = self.profile.display_name.clone() {
             info = info.push(Row::new().push(Text::new(display_name)));
         } else {
-            let pk = self.public_key.to_string();
+            let pk = self.profile.pubkey.to_string();
             info = info.push(Row::new().push(Text::new(format!(
                 "{}:{}",
                 &pk[0..8],
@@ -53,7 +51,7 @@ impl Contact {
             ))));
         }
 
-        if let Some(name) = self.metadata.name.clone() {
+        if let Some(name) = self.profile.name.clone() {
             info = info.push(Row::new().push(Text::new(format!("@{}", name)).size(16)));
         } else {
             info = info.push(Row::new());

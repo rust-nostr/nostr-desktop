@@ -6,17 +6,16 @@ use std::collections::HashMap;
 use iced::widget::{image, Column, Row, Text};
 use iced::{Command, Element};
 use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
-use nostr_sdk::nostr::url::Url;
-use nostr_sdk::nostr::Metadata;
 
 use crate::message::{DashboardMessage, Message};
+use crate::nostr::db::model::Profile;
 use crate::stage::dashboard::component::Contact;
 use crate::stage::dashboard::component::Dashboard;
 use crate::stage::dashboard::{Context, State};
 
 #[derive(Debug, Clone)]
 pub enum ContactsMessage {
-    SearchImage(XOnlyPublicKey, Url),
+    SearchImage(XOnlyPublicKey, String),
     MaybeFoundImage(XOnlyPublicKey, Option<image::Handle>),
 }
 
@@ -45,16 +44,14 @@ impl State for ContactsState {
 
         for contact in ctx.store.get_contacts().iter() {
             if let Ok(profile) = ctx.store.get_profile(contact.pk) {
-                let metadata = profile.metadata;
-
                 self.contacts
                     .entry(contact.pk)
-                    .and_modify(|c| c.metadata = metadata.clone())
-                    .or_insert_with(|| Contact::new(contact.pk, metadata));
+                    .and_modify(|c| c.profile = profile.clone())
+                    .or_insert_with(|| Contact::new(profile));
             } else {
                 self.contacts
                     .entry(contact.pk)
-                    .or_insert_with(|| Contact::new(contact.pk, Metadata::default()));
+                    .or_insert_with(|| Contact::new(Profile::new(contact.pk)));
             }
         }
 
@@ -74,7 +71,7 @@ impl State for ContactsState {
 
         for (pk, contact) in self.contacts.iter() {
             if contact.image.is_none() {
-                if let Some(url) = contact.metadata.picture.clone() {
+                if let Some(url) = contact.profile.picture.clone() {
                     let pk = *pk;
                     commands.push(Command::perform(async {}, move |_| {
                         ContactsMessage::SearchImage(pk, url).into()
@@ -90,7 +87,7 @@ impl State for ContactsState {
         let mut contacts = Column::new().spacing(10);
 
         let mut contacts_vec: Vec<(&XOnlyPublicKey, &Contact)> = self.contacts.iter().collect();
-        contacts_vec.sort_by(|a, b| b.1.metadata.cmp(&a.1.metadata));
+        contacts_vec.sort_by(|a, b| b.1.profile.name.cmp(&a.1.profile.name));
         for (_, contact) in contacts_vec.iter() {
             contacts = contacts.push(Row::new().push(contact.view()));
         }
@@ -119,7 +116,7 @@ impl From<ContactsMessage> for Message {
     }
 }
 
-pub async fn fetch_image(url: Url) -> Option<image::Handle> {
+pub async fn fetch_image(url: String) -> Option<image::Handle> {
     match reqwest::get(url).await {
         Ok(res) => match res.bytes().await {
             Ok(bytes) => return Some(image::Handle::from_memory(bytes.as_ref().to_vec())),

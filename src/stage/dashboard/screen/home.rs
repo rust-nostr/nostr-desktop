@@ -43,9 +43,8 @@ impl State for HomeState {
         String::from("Nostr - Home")
     }
 
-    fn load(&mut self, ctx: &Context) -> Command<Message> {
+    fn load(&mut self, _ctx: &Context) -> Command<Message> {
         self.loaded = true;
-        self.feed_ids = ctx.store.get_feed_ids(FEED_LIMIT, self.page as usize);
         Command::perform(async {}, |_| Message::Tick)
     }
 
@@ -60,15 +59,8 @@ impl State for HomeState {
 
                 if offset < 0.1 && self.page > 0 {
                     self.page -= 1;
-                    self.feed_ids.truncate((self.page + 1) * FEED_LIMIT);
-                    //return scrollable::snap_to(scrollable::Id::new("id"), 0.65);
                 } else if offset > 0.9 && self.page * FEED_LIMIT < self.feed_ids.len() {
                     self.page += 1;
-                    let mut more_notes = ctx.store.get_feed_ids(FEED_LIMIT, self.page);
-                    if !self.feed_ids.ends_with(&more_notes) {
-                        self.feed_ids.append(&mut more_notes);
-                    }
-                    //return scrollable::snap_to(scrollable::Id::new("id"), 0.35);
                 }
             }
             Message::Dashboard(DashboardMessage::Home(msg)) => match msg {
@@ -92,20 +84,14 @@ impl State for HomeState {
     fn view(&self, ctx: &Context) -> Element<Message> {
         let mut content: Column<Message> = Column::new();
 
-        let ids = self
-            .feed_ids
-            .iter()
-            /* .skip(self.page.saturating_sub(1) * FEED_LIMIT)
-            .take(FEED_LIMIT * 2) */;
-
-        for note in ctx.store.get_feed_by_ids(ids).into_iter() {
-            let display_name = if let Ok(profile) = ctx.store.get_profile(note.pubkey) {
-                profile.metadata.display_name.unwrap_or_else(|| {
-                    let pk = note.pubkey.to_string();
+        for event in ctx.store.get_feed(FEED_LIMIT, self.page).into_iter() {
+            let display_name = if let Ok(profile) = ctx.store.get_profile(event.pubkey) {
+                profile.display_name.unwrap_or_else(|| {
+                    let pk = event.pubkey.to_string();
                     format!("{}:{}", &pk[0..8], &pk[pk.len() - 8..])
                 })
             } else {
-                let pk = note.pubkey.to_string();
+                let pk = event.pubkey.to_string();
                 format!("{}:{}", &pk[0..8], &pk[pk.len() - 8..])
             };
 
@@ -117,7 +103,7 @@ impl State for HomeState {
 
             let post = Column::new()
                 .push(Row::new().push(Text::new(display_name)))
-                .push(Row::new().push(Text::new(note.content.clone())))
+                .push(Row::new().push(Text::new(event.content.clone())))
                 .push(buttons)
                 .push(Rule::horizontal(1))
                 .spacing(10);

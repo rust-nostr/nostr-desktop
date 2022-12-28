@@ -127,27 +127,37 @@ fn process_event(store: &Store, event: &Event) {
     match event.kind {
         Kind::Base(KindBase::Metadata) => {
             if let Ok(profile) = store.get_profile(event.pubkey) {
-                if event.created_at > profile.timestamp {
+                if event.created_at > profile.metadata_at {
                     if let Ok(metadata) = Metadata::from_json(&event.content) {
-                        if let Err(e) = store.set_profile(
-                            event.pubkey,
-                            Profile {
-                                metadata,
-                                timestamp: event.created_at,
-                            },
-                        ) {
+                        if let Err(e) = store.set_profile(Profile {
+                            pubkey: event.pubkey,
+                            name: metadata.name,
+                            display_name: metadata.display_name,
+                            about: metadata.about,
+                            website: metadata.website.map(|u| u.to_string()),
+                            picture: metadata.picture.map(|u| u.to_string()),
+                            nip05: metadata.nip05,
+                            lud06: metadata.lud06,
+                            lud16: metadata.lud16,
+                            metadata_at: event.created_at,
+                        }) {
                             log::error!("Impossible to save profile: {}", e.to_string());
                         }
                     }
                 }
             } else if let Ok(metadata) = Metadata::from_json(&event.content) {
-                if let Err(e) = store.set_profile(
-                    event.pubkey,
-                    Profile {
-                        metadata,
-                        timestamp: event.created_at,
-                    },
-                ) {
+                if let Err(e) = store.set_profile(Profile {
+                    pubkey: event.pubkey,
+                    name: metadata.name,
+                    display_name: metadata.display_name,
+                    about: metadata.about,
+                    website: metadata.website.map(|u| u.to_string()),
+                    picture: metadata.picture.map(|u| u.to_string()),
+                    nip05: metadata.nip05,
+                    lud06: metadata.lud06,
+                    lud16: metadata.lud16,
+                    metadata_at: event.created_at,
+                }) {
                     log::error!("Impossible to save profile: {}", e.to_string());
                 }
             }

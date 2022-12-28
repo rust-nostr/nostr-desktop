@@ -54,7 +54,6 @@ impl App {
         // read local db
         // if key exists, load main app
         // else load login/register view
-        store.flush();
         let context = Context::new(Stage::default(), client, store);
         let app = Self {
             state: new_state(&context),

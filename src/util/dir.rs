@@ -19,9 +19,3 @@ pub fn default_dir() -> Result<PathBuf> {
     fs::create_dir_all(path.as_path())?;
     Ok(path)
 }
-
-pub fn account_dir(public_key: XOnlyPublicKey) -> Result<PathBuf> {
-    let path = default_dir()?.join("accounts").join(public_key.to_string());
-    fs::create_dir_all(path.as_path())?;
-    Ok(path)
-}
