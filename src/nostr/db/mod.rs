@@ -16,6 +16,7 @@ use self::model::Profile;
 use self::rocksdb::{
     BoundColumnFamily, IteratorMode, Store as RocksStore, WriteBatch, WriteSerializedBatch,
 };
+use self::util::HashPrefix;
 
 #[derive(Debug, Clone)]
 pub struct Store {
@@ -78,37 +79,15 @@ impl Store {
     pub fn save_event(&self, event: &Event) -> Result<()> {
         let mut batch = WriteBatch::default();
 
-        let event_id_prefix = util::hash_prefix(event.id);
+        let event_id_prefix: HashPrefix = util::hash_prefix(event.id);
 
         match event.kind {
-            Kind::Base(KindBase::TextNote) => {
-                let timestamp = event.created_at.to_be_bytes();
-
-                if let Ok(prev_ids) = self.db.get_deserialized::<[u8; 8], Vec<Vec<u8>>>(
-                    self.textnote_by_timestamp(),
-                    timestamp,
-                ) {
-                    let event_id_prefix = event_id_prefix.to_vec();
-                    if !prev_ids.contains(&event_id_prefix) {
-                        batch.put_serialized(
-                            self.textnote_by_timestamp(),
-                            timestamp,
-                            &[prev_ids, vec![event_id_prefix]].concat(),
-                        )?;
-                    }
-                } else {
-                    batch.put_serialized(
-                        self.textnote_by_timestamp(),
-                        timestamp,
-                        &[event_id_prefix],
-                    )?;
-                }
-
-                if self
-                    .db
-                    .key_may_exist(self.textnote_by_timestamp(), timestamp)
-                {}
-            }
+            Kind::Base(KindBase::TextNote) => self.index_by_timestamp(
+                &mut batch,
+                self.textnote_by_timestamp(),
+                event_id_prefix,
+                event.created_at,
+            )?,
             _ => (),
         };
 
@@ -117,6 +96,29 @@ impl Store {
         }
 
         Ok(self.db.write(batch)?)
+    }
+
+    fn index_by_timestamp(
+        &self,
+        batch: &mut WriteBatch,
+        cf: Arc<BoundColumnFamily>,
+        event_id_prefix: HashPrefix,
+        timestamp: u64,
+    ) -> Result<()> {
+        let timestamp = timestamp.to_be_bytes();
+        if let Ok(prev_ids) = self
+            .db
+            .get_deserialized::<HashPrefix, Vec<Vec<u8>>>(cf.clone(), timestamp)
+        {
+            let event_id_prefix = event_id_prefix.to_vec();
+            if !prev_ids.contains(&event_id_prefix) {
+                batch.put_serialized(cf, timestamp, &[prev_ids, vec![event_id_prefix]].concat())?;
+            }
+        } else {
+            batch.put_serialized(cf, timestamp, &[event_id_prefix])?;
+        };
+
+        Ok(())
     }
 
     pub fn set_profile(&self, public_key: XOnlyPublicKey, profile: Profile) -> Result<()> {
