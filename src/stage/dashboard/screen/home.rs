@@ -22,7 +22,6 @@ pub enum HomeMessage {
 #[derive(Clone, Default)]
 pub struct HomeState {
     loaded: bool,
-    feed_ids: Vec<Vec<u8>>,
     latest_offset: f32,
     page: usize,
 }
@@ -31,7 +30,6 @@ impl HomeState {
     pub fn new() -> Self {
         Self {
             loaded: false,
-            feed_ids: Vec::new(),
             latest_offset: 0.0,
             page: 0,
         }
@@ -56,18 +54,12 @@ impl State for HomeState {
         match message {
             Message::Scrolled(offset) => {
                 self.latest_offset = offset;
-
-                if offset < 0.1 && self.page > 0 {
-                    self.page -= 1;
-                } else if offset > 0.9 && self.page * FEED_LIMIT < self.feed_ids.len() {
+                if offset > 0.9 {
                     self.page += 1;
                 }
             }
             Message::Dashboard(DashboardMessage::Home(msg)) => match msg {
-                HomeMessage::PushTextNote(event) => {
-                    self.feed_ids.push(event.created_at.to_be_bytes().to_vec());
-                    self.feed_ids.sort_by(|a, b| b.cmp(a));
-                }
+                HomeMessage::PushTextNote(_) => {}
                 HomeMessage::Like(event) => {
                     let client = ctx.client.clone();
                     return Command::perform(async move { client.like(&event).await }, |_| {
@@ -84,7 +76,12 @@ impl State for HomeState {
     fn view(&self, ctx: &Context) -> Element<Message> {
         let mut content: Column<Message> = Column::new();
 
-        for event in ctx.store.get_feed(FEED_LIMIT, self.page).into_iter() {
+        for event in ctx
+            .store
+            .get_feed(FEED_LIMIT, self.page)
+            .unwrap_or_default()
+            .into_iter()
+        {
             let display_name = if let Ok(profile) = ctx.store.get_profile(event.pubkey) {
                 profile.display_name.unwrap_or_else(|| {
                     let pk = event.pubkey.to_string();

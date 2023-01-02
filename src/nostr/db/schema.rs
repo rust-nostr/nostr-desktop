@@ -32,11 +32,13 @@ PRAGMA user_version = {};
 
 -- Event Table
 CREATE TABLE IF NOT EXISTS event (
-id BLOB PRIMARY KEY,
+id TEXT PRIMARY KEY,
 pubkey TEXT NOT NULL,
 created_at INTEGER NOT NULL,
 kind INTEGER NOT NULL,
+tags BLOB NOT NULL,
 content TEXT NOT NULL,
+sig TEXT NOT NULL,
 FOREIGN KEY(pubkey) REFERENCES profile(pubkey)
 );
 
@@ -44,25 +46,6 @@ FOREIGN KEY(pubkey) REFERENCES profile(pubkey)
 CREATE INDEX IF NOT EXISTS pubkey_index ON event(pubkey);
 CREATE INDEX IF NOT EXISTS created_at_index ON event(created_at);
 CREATE INDEX IF NOT EXISTS event_composite_index ON event(kind,created_at);
-
--- Tag Table
--- Tag values are stored as either a BLOB (if they come in as a
--- hex-string), or TEXT otherwise.
--- This means that searches need to select the appropriate column.
-CREATE TABLE IF NOT EXISTS tag (
-id INTEGER PRIMARY KEY,
-event_id BLOB NOT NULL, -- an event ID that contains a tag.
-kind TEXT, -- the tag kind ("p", "e", whatever)
-value BLOB, -- the tag value,
-FOREIGN KEY(event_id) REFERENCES event(id) ON UPDATE CASCADE ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS tag_val_index ON tag(value);
-CREATE INDEX IF NOT EXISTS tag_composite_index ON tag(event_id,name,value);
-
--- Author Table (author seen)
-CREATE TABLE IF NOT EXISTS author (
-pubkey TEXT PRIMARY KEY NOT NULL,
-);
 
 -- Profile Table
 CREATE TABLE IF NOT EXISTS profile (
@@ -75,15 +58,20 @@ picture TEXT DEFAULT NULL,
 nip05 TEXT DEFAULT NULL,
 lud06 TEXT DEFAULT NULL,
 lud16 TEXT DEFAULT NULL,
-metadata_at INTEGER DEFAULT NULL
+is_contact BOOLEAN DEFAULT FALSE,
+metadata_at INTEGER DEFAULT 0
 );
 
--- Contact Table
-CREATE TABLE IF NOT EXISTS contact (
-pubkey TEXT PRIMARY KEY NOT NULL,
-relay_url TEXT DEFAULT NULL,
-alias TEXT DEFAULT NULL
+-- Relays Table
+CREATE TABLE IF NOT EXISTS relays (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+url TEXT NOT NULL,
+proxy TEXT DEFAULT NULL,
+enabled BOOLEAN DEFAULT TRUE
 );
+
+-- Relays Indexes
+CREATE UNIQUE INDEX IF NOT EXISTS url_index ON relays(url);
 "##,
     DB_VERSION
 );
@@ -121,7 +109,7 @@ pub fn upgrade_db(conn: &mut PooledConnection) -> Result<(), Error> {
         // Database is new or not current
         Ordering::Less => {
             // initialize from scratch
-            if curr_version == 1 {
+            if curr_version == 0 {
                 curr_version = mig_init(conn)?;
             }
 

@@ -4,7 +4,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
 use nostr_sdk::Result;
 
 pub fn home() -> PathBuf {

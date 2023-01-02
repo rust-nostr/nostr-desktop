@@ -1,14 +1,13 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::str::FromStr;
 use std::time::Duration;
 
 use async_stream::stream;
 use iced::Subscription;
 use iced_futures::BoxStream;
 use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
-use nostr_sdk::nostr::{Contact, Event, Kind, KindBase, Metadata, SubscriptionFilter};
+use nostr_sdk::nostr::{Contact, Event, Kind, KindBase, Metadata, SubscriptionFilter, Tag};
 use nostr_sdk::Client;
 use nostr_sdk::RelayPoolNotifications;
 use tokio::sync::mpsc;
@@ -42,18 +41,26 @@ where
         let store = self.store.clone();
 
         super::thread::spawn("filters", move || {
+            let my_public_key = client.keys().public_key();
+
             let mut filters: Filters = Filters {
                 contact_list: SubscriptionFilter::new()
-                    .author(client.keys().public_key())
+                    .author(my_public_key)
                     .kind(Kind::Base(KindBase::ContactList))
                     .limit(1),
                 encrypted_dm: SubscriptionFilter::new()
-                    .pubkey(client.keys().public_key())
+                    .pubkey(my_public_key)
                     .kind(Kind::Base(KindBase::EncryptedDirectMessage)),
-                following_authors: SubscriptionFilter::new(),
+                following_authors: SubscriptionFilter::new().author(my_public_key).kinds(vec![
+                    Kind::Base(KindBase::Metadata),
+                    Kind::Base(KindBase::TextNote),
+                ]),
             };
 
-            if let Ok(authors) = store.get_authors() {
+            if let Ok(mut authors) = store.get_authors() {
+                if !authors.contains(&my_public_key) {
+                    authors.push(my_public_key);
+                }
                 filters.following_authors = SubscriptionFilter::new().authors(authors).kinds(vec![
                     Kind::Base(KindBase::Metadata),
                     Kind::Base(KindBase::TextNote),
@@ -67,7 +74,10 @@ where
             loop {
                 std::thread::sleep(Duration::from_secs(30));
 
-                if let Ok(authors) = store.get_authors() {
+                if let Ok(mut authors) = store.get_authors() {
+                    if !authors.contains(&my_public_key) {
+                        authors.push(my_public_key);
+                    }
                     if filters.following_authors.authors.as_ref() != Some(&authors) {
                         filters.following_authors =
                             SubscriptionFilter::new().authors(authors).kinds(vec![
@@ -89,11 +99,12 @@ where
         let store = self.store.clone();
         let join = tokio::task::spawn(async move {
             loop {
+                let my_public_key = client.keys().public_key();
                 let mut notifications = client.notifications();
                 while let Ok(notification) = notifications.recv().await {
                     match notification {
                         RelayPoolNotifications::ReceivedEvent(event) => {
-                            process_event(&store, &event);
+                            process_event(my_public_key, &store, &event);
                             sender.send(event).ok();
                         }
                         RelayPoolNotifications::ReceivedMessage(_msg) => {}
@@ -121,15 +132,13 @@ impl NostrSync {
     }
 }
 
-fn process_event(store: &Store, event: &Event) {
-    let mut authors: Vec<XOnlyPublicKey> = vec![event.pubkey];
-
+fn process_event(my_public_key: XOnlyPublicKey, store: &Store, event: &Event) {
     match event.kind {
         Kind::Base(KindBase::Metadata) => {
             if let Ok(profile) = store.get_profile(event.pubkey) {
                 if event.created_at > profile.metadata_at {
                     if let Ok(metadata) = Metadata::from_json(&event.content) {
-                        if let Err(e) = store.set_profile(Profile {
+                        if let Err(e) = store.update_profile(Profile {
                             pubkey: event.pubkey,
                             name: metadata.name,
                             display_name: metadata.display_name,
@@ -139,14 +148,15 @@ fn process_event(store: &Store, event: &Event) {
                             nip05: metadata.nip05,
                             lud06: metadata.lud06,
                             lud16: metadata.lud16,
+                            is_contact: profile.is_contact,
                             metadata_at: event.created_at,
                         }) {
-                            log::error!("Impossible to save profile: {}", e.to_string());
+                            log::error!("Impossible to update profile: {}", e.to_string());
                         }
                     }
                 }
             } else if let Ok(metadata) = Metadata::from_json(&event.content) {
-                if let Err(e) = store.set_profile(Profile {
+                if let Err(e) = store.insert_profile(Profile {
                     pubkey: event.pubkey,
                     name: metadata.name,
                     display_name: metadata.display_name,
@@ -156,28 +166,26 @@ fn process_event(store: &Store, event: &Event) {
                     nip05: metadata.nip05,
                     lud06: metadata.lud06,
                     lud16: metadata.lud16,
+                    is_contact: event.pubkey == my_public_key,
                     metadata_at: event.created_at,
                 }) {
-                    log::error!("Impossible to save profile: {}", e.to_string());
+                    log::error!("Impossible to insert profile: {}", e.to_string());
                 }
             }
         }
         Kind::Base(KindBase::ContactList) => {
             let mut contact_list: Vec<Contact> = Vec::new();
             for tag in event.tags.clone().into_iter() {
-                let tag: Vec<String> = tag.as_vec();
-                if let Some(pk) = tag.get(1) {
-                    if let Ok(pk) = XOnlyPublicKey::from_str(pk) {
-                        authors.push(pk);
-
-                        let relay_url = tag.get(2).cloned();
-                        let alias = tag.get(3).cloned();
-                        contact_list.push(Contact::new(
-                            pk,
-                            relay_url.unwrap_or_default(),
-                            alias.unwrap_or_default(),
-                        ));
+                match tag {
+                    Tag::PubKey(pk, relay_url) => {
+                        contact_list.push(Contact::new::<String>(pk, relay_url, None))
                     }
+                    Tag::ContactList {
+                        pk,
+                        relay_url,
+                        alias,
+                    } => contact_list.push(Contact::new(pk, relay_url, alias)),
+                    _ => (),
                 }
             }
             if let Err(e) = store.set_contacts(contact_list) {
@@ -190,8 +198,4 @@ fn process_event(store: &Store, event: &Event) {
             }
         }
     };
-
-    if let Err(e) = store.set_authors(authors) {
-        log::error!("Impossible to save authors: {}", e.to_string());
-    }
 }

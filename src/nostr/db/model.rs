@@ -15,6 +15,7 @@ pub struct Profile {
     pub nip05: Option<String>,
     pub lud06: Option<String>,
     pub lud16: Option<String>,
+    pub is_contact: bool,
     pub metadata_at: u64,
 }
 
@@ -30,6 +31,7 @@ impl Profile {
             nip05: None,
             lud06: None,
             lud16: None,
+            is_contact: false,
             metadata_at: 0,
         }
     }

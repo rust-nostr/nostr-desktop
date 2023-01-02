@@ -24,6 +24,7 @@ pub enum RelaysMessage {
     RelayUrlChanged(String),
     ProxyChanged(String),
     ProxyToggled(bool),
+    LoadRelays(Vec<(String, Option<String>)>),
     AddRelay,
     RemoveRelay(String),
     UpdateRelays,
@@ -54,9 +55,16 @@ impl RelaysState {
         self.error = None;
     }
 
-    async fn add_relay(&mut self, client: &Client, proxy: Option<SocketAddr>) {
+    async fn add_relay(&mut self, ctx: &Context, client: &Client, proxy: Option<SocketAddr>) {
         match client.add_relay(&self.relay_url, proxy).await {
             Ok(_) => {
+                if let Err(e) = ctx.store.insert_relay(
+                    self.relay_url.clone(),
+                    (!self.proxy.is_empty()).then_some(self.proxy.clone()),
+                ) {
+                    log::error!("Impossible to save relay: {}", e.to_string());
+                }
+
                 if let Err(e) = client.connect().await {
                     self.error = Some(e.to_string())
                 } else {
@@ -82,7 +90,8 @@ impl State for RelaysState {
 
     fn load(&mut self, _ctx: &Context) -> Command<Message> {
         self.loaded = true;
-        Command::perform(async {}, |_| RelaysMessage::UpdateRelays.into())
+        // TODO: load relays from db
+        Command::perform(async {}, |_| RelaysMessage::LoadRelays(Vec::new()).into())
     }
 
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
@@ -93,15 +102,20 @@ impl State for RelaysState {
                 RelaysMessage::RelayUrlChanged(url) => self.relay_url = url,
                 RelaysMessage::ProxyChanged(proxy) => self.proxy = proxy,
                 RelaysMessage::ProxyToggled(value) => self.use_proxy = value,
+                RelaysMessage::LoadRelays(relays) => {
+                    // TODO: client.add_relays(...).await?;
+                    return Command::perform(async {}, |_| RelaysMessage::UpdateRelays.into());
+                }
                 RelaysMessage::AddRelay => {
                     if self.use_proxy {
                         match self.proxy.parse() {
-                            Ok(proxy) => RUNTIME
-                                .block_on(async { self.add_relay(&client, Some(proxy)).await }),
+                            Ok(proxy) => RUNTIME.block_on(async {
+                                self.add_relay(ctx, &client, Some(proxy)).await
+                            }),
                             Err(e) => self.error = Some(e.to_string()),
                         }
                     } else {
-                        RUNTIME.block_on(async { self.add_relay(&client, None).await });
+                        RUNTIME.block_on(async { self.add_relay(ctx, &client, None).await });
                     };
                     return self.load(ctx);
                 }

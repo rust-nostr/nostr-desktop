@@ -8,7 +8,6 @@ use iced::{Command, Element};
 use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
 
 use crate::message::{DashboardMessage, Message};
-use crate::nostr::db::model::Profile;
 use crate::stage::dashboard::component::Contact;
 use crate::stage::dashboard::component::Dashboard;
 use crate::stage::dashboard::{Context, State};
@@ -42,17 +41,11 @@ impl State for ContactsState {
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
         let mut commands = Vec::new();
 
-        for contact in ctx.store.get_contacts().iter() {
-            if let Ok(profile) = ctx.store.get_profile(contact.pk) {
-                self.contacts
-                    .entry(contact.pk)
-                    .and_modify(|c| c.profile = profile.clone())
-                    .or_insert_with(|| Contact::new(profile));
-            } else {
-                self.contacts
-                    .entry(contact.pk)
-                    .or_insert_with(|| Contact::new(Profile::new(contact.pk)));
-            }
+        for profile in ctx.store.get_contacts().unwrap().into_iter() {
+            self.contacts
+                .entry(profile.pubkey)
+                .and_modify(|c| c.profile = profile.clone())
+                .or_insert_with(|| Contact::new(profile));
         }
 
         if let Message::Dashboard(DashboardMessage::Contacts(msg)) = message {
