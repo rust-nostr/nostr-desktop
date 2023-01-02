@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::net::SocketAddr;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -230,21 +231,42 @@ impl Store {
         Ok(authors)
     }
 
-    pub fn insert_relay(&self, url: String, proxy: Option<String>) -> Result<(), Error> {
+    pub fn insert_relay(&self, url: String, proxy: Option<SocketAddr>) -> Result<(), Error> {
         let conn = self.pool.get()?;
         conn.execute(
             "INSERT INTO relays (url, proxy) VALUES (?, ?);",
-            (url, proxy),
+            (url, proxy.map(|a| a.to_string())),
         )?;
 
         Ok(())
     }
 
+    pub fn get_relays(&self) -> Result<Vec<(String, Option<SocketAddr>)>, Error> {
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare("SELECT url, proxy FROM relays WHERE enabled = 1")?;
+        let mut rows = stmt.query([])?;
+
+        let mut relays: Vec<(String, Option<SocketAddr>)> = Vec::new();
+        while let Ok(Some(row)) = rows.next() {
+            let url: String = row.get(0)?;
+            let proxy: Option<String> = row.get(1)?;
+            relays.push((
+                url,
+                proxy
+                    .map(|p| p.parse())
+                    .filter(|r| r.is_ok())
+                    .map(|r| r.unwrap()),
+            ));
+        }
+        Ok(relays)
+    }
+
     pub fn get_feed(&self, limit: usize, _page: usize) -> Result<Vec<Event>> {
         let conn = self.pool.get()?;
-        let mut stmt =
-            conn.prepare("SELECT * FROM event WHERE kind = ? ORDER BY created_at DESC LIMIT ?")?;
-        let mut rows = stmt.query([1, limit])?;
+        let mut stmt = conn.prepare(
+            "SELECT * FROM event WHERE kind = ? OR kind = ? ORDER BY created_at DESC LIMIT ?",
+        )?;
+        let mut rows = stmt.query([1, 6, limit])?;
 
         let mut events = Vec::new();
 

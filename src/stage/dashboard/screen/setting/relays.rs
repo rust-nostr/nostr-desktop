@@ -24,7 +24,6 @@ pub enum RelaysMessage {
     RelayUrlChanged(String),
     ProxyChanged(String),
     ProxyToggled(bool),
-    LoadRelays(Vec<(String, Option<String>)>),
     AddRelay,
     RemoveRelay(String),
     UpdateRelays,
@@ -58,10 +57,7 @@ impl RelaysState {
     async fn add_relay(&mut self, ctx: &Context, client: &Client, proxy: Option<SocketAddr>) {
         match client.add_relay(&self.relay_url, proxy).await {
             Ok(_) => {
-                if let Err(e) = ctx.store.insert_relay(
-                    self.relay_url.clone(),
-                    (!self.proxy.is_empty()).then_some(self.proxy.clone()),
-                ) {
+                if let Err(e) = ctx.store.insert_relay(self.relay_url.clone(), proxy) {
                     log::error!("Impossible to save relay: {}", e.to_string());
                 }
 
@@ -90,8 +86,7 @@ impl State for RelaysState {
 
     fn load(&mut self, _ctx: &Context) -> Command<Message> {
         self.loaded = true;
-        // TODO: load relays from db
-        Command::perform(async {}, |_| RelaysMessage::LoadRelays(Vec::new()).into())
+        Command::perform(async {}, |_| RelaysMessage::UpdateRelays.into())
     }
 
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
@@ -102,10 +97,6 @@ impl State for RelaysState {
                 RelaysMessage::RelayUrlChanged(url) => self.relay_url = url,
                 RelaysMessage::ProxyChanged(proxy) => self.proxy = proxy,
                 RelaysMessage::ProxyToggled(value) => self.use_proxy = value,
-                RelaysMessage::LoadRelays(relays) => {
-                    // TODO: client.add_relays(...).await?;
-                    return Command::perform(async {}, |_| RelaysMessage::UpdateRelays.into());
-                }
                 RelaysMessage::AddRelay => {
                     if self.use_proxy {
                         match self.proxy.parse() {

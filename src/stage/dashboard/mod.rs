@@ -51,15 +51,30 @@ pub trait State {
 
 impl App {
     pub fn new(client: Client, store: Store) -> (Self, Command<Message>) {
-        // read local db
-        // if key exists, load main app
-        // else load login/register view
-        let context = Context::new(Stage::default(), client, store);
+        let relays = store.get_relays();
+        let context = Context::new(Stage::default(), client.clone(), store);
         let app = Self {
             state: new_state(&context),
             context,
         };
-        (app, Command::perform(async {}, |_| Message::Tick))
+        (
+            app,
+            Command::perform(
+                async move {
+                    if let Ok(relays) = relays {
+                        if let Err(e) = client.add_relays(relays).await {
+                            log::error!("Impossible to load add relays: {}", e.to_string());
+                        }
+                        if let Err(e) = client.connect().await {
+                            log::error!("Impossible to connect to relays: {}", e.to_string());
+                        }
+                    } else {
+                        log::error!("Impossible to load relays");
+                    }
+                },
+                |_| Message::Tick,
+            ),
+        )
     }
 
     pub fn title(&self) -> String {
