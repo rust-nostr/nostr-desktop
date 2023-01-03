@@ -3,6 +3,7 @@
 
 mod contact;
 mod dashboard;
+pub mod post;
 
 pub use self::contact::Contact;
 pub use self::dashboard::Dashboard;

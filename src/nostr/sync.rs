@@ -54,6 +54,8 @@ where
                 following_authors: SubscriptionFilter::new().author(my_public_key).kinds(vec![
                     Kind::Base(KindBase::Metadata),
                     Kind::Base(KindBase::TextNote),
+                    Kind::Base(KindBase::Boost),
+                    Kind::Base(KindBase::Reaction),
                 ]),
             };
 
@@ -64,6 +66,8 @@ where
                 filters.following_authors = SubscriptionFilter::new().authors(authors).kinds(vec![
                     Kind::Base(KindBase::Metadata),
                     Kind::Base(KindBase::TextNote),
+                    Kind::Base(KindBase::Boost),
+                    Kind::Base(KindBase::Reaction),
                 ]);
             }
 
@@ -83,6 +87,8 @@ where
                             SubscriptionFilter::new().authors(authors).kinds(vec![
                                 Kind::Base(KindBase::Metadata),
                                 Kind::Base(KindBase::TextNote),
+                                Kind::Base(KindBase::Boost),
+                                Kind::Base(KindBase::Reaction),
                             ]);
 
                         if let Err(e) =

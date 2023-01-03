@@ -6,6 +6,7 @@ use iced::Color;
 pub const TRANSPARENT: Color = Color::TRANSPARENT;
 pub const BLACK: Color = Color::BLACK;
 pub const WHITE: Color = Color::WHITE;
+pub const GREY: Color = Color::from_rgba(0.62, 0.62, 0.62, 1.0); // rgb8(160, 160, 160)
 pub const GREEN: Color = Color::from_rgba(0.0, 0.8, 0.0, 1.0); // rgb8(0, 204, 0)
 pub const RED: Color = Color::from_rgba(1.0, 0.0, 0.0, 1.0); // rgb8(255, 0, 0)
 pub const YELLOW: Color = Color::from_rgba(1.0, 1.0, 0.0, 1.0); // rgb8(255, 255, 0)

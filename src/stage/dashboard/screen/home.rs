@@ -1,15 +1,14 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::widget::{Button, Column, Container, Row, Rule, Text};
+use iced::widget::Column;
 use iced::{Command, Element};
 use nostr_sdk::nostr::Event;
 
-use crate::component::Icon;
 use crate::message::{DashboardMessage, Message};
+use crate::stage::dashboard::component::post::Post;
 use crate::stage::dashboard::component::Dashboard;
 use crate::stage::dashboard::{Context, State};
-use crate::theme::icon::{CHAT, HEART, REPEAT};
 
 const FEED_LIMIT: usize = 40;
 
@@ -31,7 +30,7 @@ impl HomeState {
         Self {
             loaded: false,
             latest_offset: 0.0,
-            page: 0,
+            page: 1,
         }
     }
 }
@@ -75,39 +74,13 @@ impl State for HomeState {
 
     fn view(&self, ctx: &Context) -> Element<Message> {
         let mut content: Column<Message> = Column::new();
-
         for event in ctx
             .store
             .get_feed(FEED_LIMIT, self.page)
             .unwrap_or_default()
             .into_iter()
         {
-            let display_name = if let Ok(profile) = ctx.store.get_profile(event.pubkey) {
-                profile.display_name.unwrap_or_else(|| {
-                    let pk = event.pubkey.to_string();
-                    format!("{}:{}", &pk[0..8], &pk[pk.len() - 8..])
-                })
-            } else {
-                let pk = event.pubkey.to_string();
-                format!("{}:{}", &pk[0..8], &pk[pk.len() - 8..])
-            };
-
-            let buttons = Row::new()
-                .push(Button::new(Icon::view(&CHAT)))
-                .push(Button::new(Icon::view(&REPEAT)))
-                .push(Button::new(Icon::view(&HEART)))
-                .spacing(20);
-
-            let post = Column::new()
-                .push(Row::new().push(Text::new(display_name)))
-                .push(Row::new().push(Text::new(event.content.clone())))
-                .push(buttons)
-                .push(Rule::horizontal(1))
-                .spacing(10);
-
-            let post = Container::new(post).padding(15);
-
-            content = content.push(post);
+            content = content.push(Post::new(event).view(ctx));
         }
 
         Dashboard::new().view(ctx, content.spacing(10).padding(20))

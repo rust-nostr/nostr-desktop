@@ -261,12 +261,12 @@ impl Store {
         Ok(relays)
     }
 
-    pub fn get_feed(&self, limit: usize, _page: usize) -> Result<Vec<Event>> {
+    pub fn get_feed(&self, limit: usize, page: usize) -> Result<Vec<Event>> {
         let conn = self.pool.get()?;
         let mut stmt = conn.prepare(
             "SELECT * FROM event WHERE kind = ? OR kind = ? ORDER BY created_at DESC LIMIT ?",
         )?;
-        let mut rows = stmt.query([1, 6, limit])?;
+        let mut rows = stmt.query([1, 6, limit * page])?;
 
         let mut events = Vec::new();
 
