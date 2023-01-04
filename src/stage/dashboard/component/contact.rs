@@ -3,9 +3,8 @@
 
 use iced::widget::{image, Column, Container, Row, Text};
 use iced::{Alignment, Length};
+use nostr_sdk::sqlite::model::Profile;
 use once_cell::sync::Lazy;
-
-use crate::nostr::db::model::Profile;
 
 static UNKNOWN_IMG_PROFILE: Lazy<image::Handle> = Lazy::new(|| {
     image::Handle::from_memory(

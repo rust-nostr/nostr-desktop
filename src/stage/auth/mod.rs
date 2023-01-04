@@ -64,8 +64,8 @@ impl Auth {
                 self.state = new_state(&self.context);
                 (self.state.update(&mut self.context, message), None)
             }
-            Message::LoginResult(client, store) => {
-                let app = App::new(client, store);
+            Message::LoginResult(client) => {
+                let app = App::new(client);
                 (app.1, Some(NostrDesktop::Dashboard(app.0)))
             }
             _ => (self.state.update(&mut self.context, message), None),

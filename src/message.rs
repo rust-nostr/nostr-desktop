@@ -4,7 +4,6 @@
 use nostr_sdk::nostr::Event;
 use nostr_sdk::Client;
 
-use crate::nostr::db::Store;
 use crate::stage::auth::screen::LoginMessage;
 use crate::stage::dashboard::screen::{
     ChatMessage, ContactsMessage, ExploreMessage, HomeMessage, NotificationsMessage,
@@ -30,7 +29,7 @@ pub enum Message {
     Scrolled(f32),
     SetAuthStage(auth::Stage),
     SetDashboardStage(dashboard::Stage),
-    LoginResult(Client, Store),
+    LoginResult(Client),
     Clipboard(String),
     Login(LoginMessage),
     Dashboard(DashboardMessage),

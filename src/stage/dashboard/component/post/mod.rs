@@ -44,16 +44,23 @@ impl Post {
         Self { event }
     }
 
+    fn format_pubkey(&self) -> String {
+        let pk = self.event.pubkey.to_string();
+        format!("{}:{}", &pk[0..8], &pk[pk.len() - 8..])
+    }
+
     pub fn view<'a>(&self, ctx: &Context) -> Container<'a, Message> {
-        let display_name = if let Ok(profile) = ctx.store.get_profile(self.event.pubkey) {
-            profile.display_name.unwrap_or_else(|| {
-                let pk = self.event.pubkey.to_string();
-                format!("{}:{}", &pk[0..8], &pk[pk.len() - 8..])
-            })
-        } else {
-            let pk = self.event.pubkey.to_string();
-            format!("{}:{}", &pk[0..8], &pk[pk.len() - 8..])
-        };
+        let mut display_name = self.format_pubkey();
+
+        if let Ok(Ok(profile)) = ctx
+            .client
+            .store()
+            .map(|store| store.get_profile(self.event.pubkey))
+        {
+            if let Some(dn) = profile.display_name {
+                display_name = dn;
+            }
+        }
 
         let buttons = Row::new()
             .push(Button::new(Icon::view(&CHAT).size(18)).style(TransparentStyle.into()))

@@ -1,13 +1,14 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::path::Path;
+
 use iced::widget::{button, column, container, row, text, text_input};
 use iced::{Command, Element, Length};
 use nostr_sdk::nostr::key::{FromSkStr, Keys};
 use nostr_sdk::Client;
 
 use crate::message::Message;
-use crate::nostr::db::{Store, DB_NAME};
 use crate::stage::auth::context::Context;
 use crate::stage::auth::State;
 use crate::util::dir;
@@ -33,11 +34,6 @@ impl LoginState {
         self.secret_key = String::new();
         self.error = None;
     }
-
-    fn open_db() -> nostr_sdk::Result<Store> {
-        let db_path = dir::default_dir()?.join(DB_NAME);
-        Ok(Store::open(db_path)?)
-    }
 }
 
 impl State for LoginState {
@@ -50,10 +46,13 @@ impl State for LoginState {
             match msg {
                 LoginMessage::SecretKeyChanged(secret_key) => self.secret_key = secret_key,
                 LoginMessage::ButtonPressed => match Keys::from_sk_str(&self.secret_key) {
-                    Ok(keys) => match Self::open_db() {
-                        Ok(store) => {
-                            return Command::perform(async move {}, move |_| {
-                                Message::LoginResult(Client::new(&keys), store)
+                    Ok(keys) => match Client::new_with_store(
+                        &keys,
+                        dir::default_dir().unwrap_or_else(|_| Path::new("./").to_path_buf()),
+                    ) {
+                        Ok(client) => {
+                            return Command::perform(async {}, move |_| {
+                                Message::LoginResult(client)
                             })
                         }
                         Err(e) => self.error = Some(e.to_string()),

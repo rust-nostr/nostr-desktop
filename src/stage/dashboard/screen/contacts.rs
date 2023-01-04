@@ -41,11 +41,13 @@ impl State for ContactsState {
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
         let mut commands = Vec::new();
 
-        for profile in ctx.store.get_contacts().unwrap().into_iter() {
-            self.contacts
-                .entry(profile.pubkey)
-                .and_modify(|c| c.profile = profile.clone())
-                .or_insert_with(|| Contact::new(profile));
+        if let Ok(store) = ctx.client.store() {
+            for profile in store.get_contacts().unwrap_or_default().into_iter() {
+                self.contacts
+                    .entry(profile.pubkey)
+                    .and_modify(|c| c.profile = profile.clone())
+                    .or_insert_with(|| Contact::new(profile));
+            }
         }
 
         if let Message::Dashboard(DashboardMessage::Contacts(msg)) = message {

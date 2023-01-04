@@ -3,8 +3,6 @@
 
 use nostr_sdk::Client;
 
-use crate::nostr::db::Store;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Setting {
     Main,
@@ -33,16 +31,11 @@ pub struct Context {
     //pub config: ConfigContext,
     pub stage: Stage,
     pub client: Client,
-    pub store: Store,
 }
 
 impl Context {
-    pub fn new(stage: Stage, client: Client, store: Store) -> Self {
-        Self {
-            stage,
-            client,
-            store,
-        }
+    pub fn new(stage: Stage, client: Client) -> Self {
+        Self { stage, client }
     }
 
     pub fn set_stage(&mut self, stage: Stage) {
@@ -51,9 +44,5 @@ impl Context {
 
     pub fn set_client(&mut self, client: Client) {
         self.client = client;
-    }
-
-    pub fn set_store(&mut self, store: Store) {
-        self.store = store;
     }
 }

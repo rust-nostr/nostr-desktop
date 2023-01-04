@@ -14,7 +14,6 @@ use self::screen::{
     ProfileState, RelaysState, SettingState,
 };
 use crate::message::Message;
-use crate::nostr::db::Store;
 use crate::nostr::sync::NostrSync;
 
 pub struct App {
@@ -50,9 +49,8 @@ pub trait State {
 }
 
 impl App {
-    pub fn new(client: Client, store: Store) -> (Self, Command<Message>) {
-        let relays = store.get_relays();
-        let context = Context::new(Stage::default(), client.clone(), store);
+    pub fn new(client: Client) -> (Self, Command<Message>) {
+        let context = Context::new(Stage::default(), client.clone());
         let app = Self {
             state: new_state(&context),
             context,
@@ -61,15 +59,11 @@ impl App {
             app,
             Command::perform(
                 async move {
-                    if let Ok(relays) = relays {
-                        if let Err(e) = client.add_relays(relays).await {
-                            log::error!("Impossible to load add relays: {}", e.to_string());
-                        }
-                        if let Err(e) = client.connect().await {
-                            log::error!("Impossible to connect to relays: {}", e.to_string());
-                        }
-                    } else {
-                        log::error!("Impossible to load relays");
+                    if let Err(e) = client.restore_relays().await {
+                        log::error!("Impossible to load relays: {}", e.to_string());
+                    }
+                    if let Err(e) = client.connect().await {
+                        log::error!("Impossible to connect to relays: {}", e.to_string());
                     }
                 },
                 |_| Message::Tick,
@@ -82,8 +76,7 @@ impl App {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        let sync = NostrSync::subscription(self.context.client.clone(), self.context.store.clone())
-            .map(Message::Sync);
+        let sync = NostrSync::subscription(self.context.client.clone()).map(Message::Sync);
         Subscription::batch(vec![sync, self.state.subscription()])
     }
 

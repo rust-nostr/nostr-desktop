@@ -74,13 +74,15 @@ impl State for HomeState {
 
     fn view(&self, ctx: &Context) -> Element<Message> {
         let mut content: Column<Message> = Column::new();
-        for event in ctx
-            .store
-            .get_feed(FEED_LIMIT, self.page)
-            .unwrap_or_default()
-            .into_iter()
-        {
-            content = content.push(Post::new(event).view(ctx));
+
+        if let Ok(store) = ctx.client.store() {
+            for event in store
+                .get_feed(FEED_LIMIT, self.page)
+                .unwrap_or_default()
+                .into_iter()
+            {
+                content = content.push(Post::new(event).view(ctx));
+            }
         }
 
         Dashboard::new().view(ctx, content.spacing(10).padding(20))
