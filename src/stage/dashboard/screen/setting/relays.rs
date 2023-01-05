@@ -302,7 +302,7 @@ impl State for RelaysState {
             .push(relays)
             .push(saved_relays);
 
-        Dashboard::new().view(ctx, content.spacing(20).padding(20))
+        Dashboard::new().view(ctx, content.spacing(20).padding([20, 30]))
     }
 }
 

@@ -26,7 +26,6 @@ impl Dashboard {
         T: Into<Element<'a, Message>>,
     {
         Column::new()
-            .push(Navbar::view())
             .push(
                 Row::new()
                     .push(
@@ -37,11 +36,18 @@ impl Dashboard {
                     )
                     .push(Rule::vertical(1))
                     .push(
-                        Container::new(Scrollable::new(content).on_scroll(Message::Scrolled))
-                            //.max_width(600)
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .center_x(),
+                        Column::new()
+                            .push(Navbar::view())
+                            .push(Rule::horizontal(1))
+                            .push(
+                                Container::new(
+                                    Scrollable::new(content).on_scroll(Message::Scrolled),
+                                )
+                                //.max_width(600)
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .center_x(),
+                            ),
                     ),
             )
             //.max_width(1200)

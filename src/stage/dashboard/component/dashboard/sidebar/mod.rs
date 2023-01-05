@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::widget::{Column, Container, Text};
+use iced::widget::{Column, Container, Space, Text};
 use iced::Length;
 
 mod button;
@@ -9,7 +9,7 @@ mod button;
 use self::button::{SidebarButton, BUTTON_SIZE};
 use crate::component::Icon;
 use crate::stage::dashboard::{Context, Setting, Stage};
-use crate::theme::icon::{CHAT, CONTACT, EXPLORE, HOME, LOCK, NOTIFICATION, PERSON, SETTING};
+use crate::theme::icon::{CHAT, CONTACT, EXPLORE, HOME, PERSON, SETTING};
 use crate::Message;
 
 #[derive(Clone, Default)]
@@ -21,19 +21,17 @@ impl Sidebar {
     }
 
     pub fn view<'a>(&self, ctx: &Context) -> Container<'a, Message> {
+        let title = Text::new("Noppler").size(38);
         let home_button = SidebarButton::new("Home", Icon::view(&HOME)).view(ctx, Stage::Home);
         let explore_button =
             SidebarButton::new("Explore", Icon::view(&EXPLORE)).view(ctx, Stage::Explore);
         let chat_button = SidebarButton::new("Chats", Icon::view(&CHAT)).view(ctx, Stage::Chats);
         let contacts_button =
             SidebarButton::new("Contacts", Icon::view(&CONTACT)).view(ctx, Stage::Contacts);
-        let notifications_button = SidebarButton::new("Notifications", Icon::view(&NOTIFICATION))
-            .view(ctx, Stage::Notifications);
         let profile_button =
             SidebarButton::new("Profile", Icon::view(&PERSON)).view(ctx, Stage::Profile);
         let setting_button = SidebarButton::new("Settings", Icon::view(&SETTING))
             .view(ctx, Stage::Setting(Setting::Main));
-        let lock_button = SidebarButton::new("Lock", Icon::view(&LOCK))._view(ctx, Message::Lock);
 
         let version = Text::new(format!(
             "{} v{}",
@@ -43,15 +41,22 @@ impl Sidebar {
         .size(16);
 
         sidebar(
+            Container::new(
+                Column::new()
+                    .push(Space::with_height(Length::Units(30)))
+                    .push(title)
+                    .push(Space::with_height(Length::Units(30)))
+                    .padding(15),
+            )
+            .width(Length::Units(BUTTON_SIZE))
+            .center_x(),
             sidebar_menu(vec![
                 home_button,
                 explore_button,
                 chat_button,
                 contacts_button,
-                notifications_button,
                 profile_button,
                 setting_button,
-                lock_button,
             ]),
             sidebar_menu(vec![Container::new(version)
                 .width(Length::Units(BUTTON_SIZE))
@@ -60,10 +65,15 @@ impl Sidebar {
     }
 }
 
-pub fn sidebar<'a, T: 'a>(menu: Container<'a, T>, footer: Container<'a, T>) -> Container<'a, T> {
+pub fn sidebar<'a, T: 'a>(
+    title: Container<'a, T>,
+    menu: Container<'a, T>,
+    footer: Container<'a, T>,
+) -> Container<'a, T> {
     Container::new(
         Column::new()
             .padding(10)
+            .push(title)
             .push(menu.height(Length::Fill))
             .push(footer.height(Length::Shrink)),
     )
