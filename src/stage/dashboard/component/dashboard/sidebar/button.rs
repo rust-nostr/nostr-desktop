@@ -93,4 +93,25 @@ impl<'a> SidebarButton<'a> {
                 .style(style),
         )
     }
+
+    pub fn _view(&self, _ctx: &Context, msg: Message) -> Container<'a, Message> {
+        let content = Container::new(
+            Row::new()
+                .push(self.icon.clone())
+                .push(Text::new(self.text))
+                .spacing(10)
+                .width(iced::Length::Fill)
+                .align_items(Alignment::Center),
+        )
+        .width(Length::Fill)
+        .center_x()
+        .padding(5);
+
+        Container::new(
+            Button::new(content)
+                .on_press(msg)
+                .width(Length::Units(BUTTON_SIZE))
+                .style(TransparentStyle.into()),
+        )
+    }
 }

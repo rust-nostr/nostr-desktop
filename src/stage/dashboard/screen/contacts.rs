@@ -82,7 +82,7 @@ impl State for ContactsState {
         let mut contacts = Column::new().spacing(10);
 
         let mut contacts_vec: Vec<(&XOnlyPublicKey, &Contact)> = self.contacts.iter().collect();
-        contacts_vec.sort_by(|a, b| b.1.profile.name.cmp(&a.1.profile.name));
+        contacts_vec.sort_by(|a, b| a.1.profile.name.cmp(&b.1.profile.name));
         for (_, contact) in contacts_vec.iter() {
             contacts = contacts.push(Row::new().push(contact.view()));
         }

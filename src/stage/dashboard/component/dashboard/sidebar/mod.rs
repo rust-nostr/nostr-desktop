@@ -9,7 +9,7 @@ mod button;
 use self::button::{SidebarButton, BUTTON_SIZE};
 use crate::component::Icon;
 use crate::stage::dashboard::{Context, Setting, Stage};
-use crate::theme::icon::{CHAT, CONTACT, EXPLORE, HOME, NOTIFICATION, PERSON, SETTING};
+use crate::theme::icon::{CHAT, CONTACT, EXPLORE, HOME, LOCK, NOTIFICATION, PERSON, SETTING};
 use crate::Message;
 
 #[derive(Clone, Default)]
@@ -33,6 +33,7 @@ impl Sidebar {
             SidebarButton::new("Profile", Icon::view(&PERSON)).view(ctx, Stage::Profile);
         let setting_button = SidebarButton::new("Settings", Icon::view(&SETTING))
             .view(ctx, Stage::Setting(Setting::Main));
+        let lock_button = SidebarButton::new("Lock", Icon::view(&LOCK))._view(ctx, Message::Lock);
 
         let version = Text::new(format!(
             "{} v{}",
@@ -50,6 +51,7 @@ impl Sidebar {
                 notifications_button,
                 profile_button,
                 setting_button,
+                lock_button,
             ]),
             sidebar_menu(vec![Container::new(version)
                 .width(Length::Units(BUTTON_SIZE))

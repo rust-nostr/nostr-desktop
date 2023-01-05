@@ -30,6 +30,7 @@ pub enum Message {
     SetAuthStage(auth::Stage),
     SetDashboardStage(dashboard::Stage),
     LoginResult(Client),
+    Lock,
     Clipboard(String),
     Login(LoginMessage),
     Dashboard(DashboardMessage),

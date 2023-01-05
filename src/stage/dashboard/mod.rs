@@ -14,7 +14,7 @@ use self::screen::{
     ProfileState, RelaysState, SettingState,
 };
 use crate::message::Message;
-use crate::nostr::sync::NostrSync;
+use crate::sync::NostrSync;
 
 pub struct App {
     pub state: Box<dyn State>,

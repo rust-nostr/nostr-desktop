@@ -11,6 +11,6 @@ pub const PERSON: char = '\u{F4DA}';
 pub const SETTING: char = '\u{F3E5}';
 pub const TRASH: char = '\u{F78B}';
 pub const HEART: char = '\u{F417}';
-pub const LIGHTNING: char = '\u{F46D}';
+// pub const LIGHTNING: char = '\u{F46D}';
 pub const LOCK: char = '\u{F47B}';
 pub const REPEAT: char = '\u{F813}';

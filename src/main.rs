@@ -8,8 +8,8 @@ use tokio::runtime::Runtime;
 mod component;
 mod error;
 mod message;
-mod nostr;
 mod stage;
+mod sync;
 mod theme;
 mod util;
 
@@ -70,7 +70,21 @@ impl Application for NostrDesktop {
                 }
                 command
             }
-            Self::Dashboard(app) => app.update(message),
+            Self::Dashboard(app) => match message {
+                Message::Lock => {
+                    let client = app.context.client.clone();
+                    *self = Self::Auth(stage::Auth::new().0);
+                    Command::perform(
+                        async move {
+                            if let Err(e) = client.shutdown().await {
+                                log::error!("Impossible to shutdown client: {}", e.to_string());
+                            }
+                        },
+                        |_| Message::Tick,
+                    )
+                }
+                _ => app.update(message),
+            },
         }
     }
 
