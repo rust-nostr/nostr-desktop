@@ -4,7 +4,7 @@
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use iced::widget::{text, Button, Checkbox, Column, Row, Text, TextInput};
+use iced::widget::{text, Button, Checkbox, Column, Row, Rule, Text, TextInput};
 use iced::{time, Alignment, Command, Element, Length, Subscription};
 use nostr_sdk::nostr::url::Url;
 use nostr_sdk::RelayStatus;
@@ -14,7 +14,7 @@ use crate::component::{Circle, Icon};
 use crate::message::{DashboardMessage, Message};
 use crate::stage::dashboard::component::Dashboard;
 use crate::stage::dashboard::{Context, State};
-use crate::theme::color::{GREEN, RED, YELLOW};
+use crate::theme::color::{GREEN, GREY, RED, YELLOW};
 use crate::theme::icon::TRASH;
 use crate::RUNTIME;
 
@@ -24,7 +24,9 @@ pub enum RelaysMessage {
     ProxyChanged(String),
     ProxyToggled(bool),
     AddRelay,
+    AddRelayFromStore(Url, Option<SocketAddr>),
     RemoveRelay(String),
+    DisconnectRelay(String),
     UpdateRelays,
     SetRelays(Vec<(RelayStatus, Url, Option<SocketAddr>)>),
 }
@@ -56,12 +58,9 @@ impl RelaysState {
     async fn add_relay(&mut self, ctx: &Context, proxy: Option<SocketAddr>) {
         match ctx.client.add_relay(&self.relay_url, proxy).await {
             Ok(_) => {
-                if let Err(e) = ctx.client.connect().await {
-                    self.error = Some(e.to_string())
-                } else {
-                    self.relay_url.clear();
-                    self.error = None;
-                }
+                ctx.client.connect().await;
+                self.relay_url.clear();
+                self.error = None;
             }
             Err(e) => self.error = Some(e.to_string()),
         }
@@ -106,13 +105,35 @@ impl State for RelaysState {
                     return self.load(ctx);
                 }
                 RelaysMessage::RemoveRelay(url) => {
-                    return RUNTIME.block_on(async {
-                        match client.remove_relay(url).await {
-                            Ok(_) => self.error = None,
-                            Err(e) => self.error = Some(e.to_string()),
-                        }
-                        self.load(ctx)
-                    })
+                    return Command::perform(
+                        async move {
+                            if let Err(e) = client.remove_relay(&url).await {
+                                log::error!("Impossible to remove {}: {}", url, e.to_string());
+                            }
+                        },
+                        |_| RelaysMessage::UpdateRelays.into(),
+                    )
+                }
+                RelaysMessage::AddRelayFromStore(url, proxy) => {
+                    return Command::perform(
+                        async move {
+                            if let Err(e) = client.add_relay(url.clone(), proxy).await {
+                                log::error!("Impossible to add {}: {}", url, e.to_string());
+                            }
+                            client.connect().await;
+                        },
+                        |_| RelaysMessage::UpdateRelays.into(),
+                    )
+                }
+                RelaysMessage::DisconnectRelay(url) => {
+                    return Command::perform(
+                        async move {
+                            if let Err(e) = client.disconnect_relay(&url).await {
+                                log::error!("Impossible to disconnect {}: {}", url, e.to_string());
+                            }
+                        },
+                        |_| RelaysMessage::UpdateRelays.into(),
+                    )
                 }
                 RelaysMessage::SetRelays(relays) => self.relays = relays,
                 RelaysMessage::UpdateRelays => {
@@ -177,20 +198,27 @@ impl State for RelaysState {
         }
 
         for (status, url, proxy) in self.relays.iter() {
-            let button = Button::new(Icon::view(&TRASH))
+            let status = match status {
+                RelayStatus::Initialized => Circle::new(7.0).color(GREY),
+                RelayStatus::Connecting => Circle::new(7.0).color(YELLOW),
+                RelayStatus::Connected => Circle::new(7.0).color(GREEN),
+                RelayStatus::Disconnected => Circle::new(7.0).color(RED),
+                RelayStatus::Terminated => continue,
+            };
+
+            let button = Button::new(Text::new("Disconnect"))
+                .padding(10)
+                .style(iced::theme::Button::Destructive)
+                .on_press(Message::Dashboard(DashboardMessage::Setting(
+                    SettingMessage::Relays(RelaysMessage::DisconnectRelay(url.to_string())),
+                )));
+
+            let button_remove = Button::new(Icon::view(&TRASH))
                 .padding(10)
                 .style(iced::theme::Button::Destructive)
                 .on_press(Message::Dashboard(DashboardMessage::Setting(
                     SettingMessage::Relays(RelaysMessage::RemoveRelay(url.to_string())),
                 )));
-
-            let status = match status {
-                RelayStatus::Connected => Circle::new(7.0).color(GREEN),
-                RelayStatus::Initialized | RelayStatus::Connecting => {
-                    Circle::new(7.0).color(YELLOW)
-                }
-                RelayStatus::Disconnected | RelayStatus::Terminated => Circle::new(7.0).color(RED),
-            };
 
             let info = Row::new()
                 .push(status)
@@ -204,9 +232,55 @@ impl State for RelaysState {
                 Row::new()
                     .push(info)
                     .push(button)
+                    .push(button_remove)
                     .spacing(20)
                     .align_items(Alignment::Center),
             );
+        }
+
+        let mut saved_relays = Column::new().spacing(10);
+
+        if let Ok(store) = ctx.client.store() {
+            let relays = store.get_relays(false).unwrap_or_default();
+            if !relays.is_empty() {
+                saved_relays = saved_relays
+                    .push(Rule::horizontal(1))
+                    .push(Text::new("Saved relays"));
+            }
+
+            for (url, proxy) in relays.into_iter() {
+                let button_connect =
+                    Button::new(Text::new("Add"))
+                        .padding(10)
+                        .on_press(Message::Dashboard(DashboardMessage::Setting(
+                            SettingMessage::Relays(RelaysMessage::AddRelayFromStore(
+                                url.clone(),
+                                proxy,
+                            )),
+                        )));
+                let button_remove = Button::new(Icon::view(&TRASH))
+                    .padding(10)
+                    .style(iced::theme::Button::Destructive)
+                    .on_press(Message::Dashboard(DashboardMessage::Setting(
+                        SettingMessage::Relays(RelaysMessage::RemoveRelay(url.to_string())),
+                    )));
+
+                let info = Row::new()
+                    .push(Text::new(url.to_string()))
+                    .push(Text::new(format!("Proxy: {}", proxy.is_some())))
+                    .spacing(20)
+                    .align_items(Alignment::Center)
+                    .width(Length::Fill);
+
+                saved_relays = saved_relays.push(
+                    Row::new()
+                        .push(info)
+                        .push(button_connect)
+                        .push(button_remove)
+                        .spacing(20)
+                        .align_items(Alignment::Center),
+                );
+            }
         }
 
         let content = Column::new()
@@ -225,7 +299,8 @@ impl State for RelaysState {
             } else {
                 Row::new()
             })
-            .push(relays);
+            .push(relays)
+            .push(saved_relays);
 
         Dashboard::new().view(ctx, content.spacing(20).padding(20))
     }

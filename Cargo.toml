@@ -20,7 +20,7 @@ iced_futures = "0.5.1"
 iced_native = "0.7.0"
 log = "0.4.17"
 # nostr-sdk = "0.12"
-nostr-sdk = { git = "https://github.com/yukibtc/nostr-rs-sdk.git", rev = "42e32a3d5bf4f74691a57b25c0f9f6a980222f2b", features = ["sqlite"] }
+nostr-sdk = { git = "https://github.com/yukibtc/nostr-rs-sdk.git", rev = "61b9a4d470f626e8891497778261d5e7d2672358", features = ["sqlite"] }
 # nostr-sdk = { path = "../nostr-rs-sdk/crates/nostr-sdk", features = ["sqlite"] }
 # notify-rust = "4.6.0"
 once_cell = "1"

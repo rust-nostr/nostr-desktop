@@ -62,9 +62,7 @@ impl App {
                     if let Err(e) = client.restore_relays().await {
                         log::error!("Impossible to load relays: {}", e.to_string());
                     }
-                    if let Err(e) = client.connect().await {
-                        log::error!("Impossible to connect to relays: {}", e.to_string());
-                    }
+                    client.connect().await;
                 },
                 |_| Message::Tick,
             ),
