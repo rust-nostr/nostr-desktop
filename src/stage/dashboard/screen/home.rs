@@ -47,7 +47,7 @@ impl State for HomeState {
 
     fn update(&mut self, ctx: &mut Context, message: Message) -> Command<Message> {
         if !self.loaded {
-            self.load(ctx);
+            return self.load(ctx);
         }
 
         match message {
