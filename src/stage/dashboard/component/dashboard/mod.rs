@@ -18,7 +18,7 @@ pub struct Dashboard;
 
 impl Dashboard {
     pub fn new() -> Self {
-        Self::default()
+        Self
     }
 
     pub fn view<'a, T>(&self, ctx: &Context, content: T) -> Element<'a, Message>
