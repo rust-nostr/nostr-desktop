@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use iced::border::Radius;
 use iced::widget::{button, Button, Column, Container, Row, Rule, Space, Text};
 use iced::{theme, Background, Border, Length, Shadow, Theme, Vector};
@@ -71,9 +71,7 @@ impl Post {
             .push(Button::new(Icon::view(&HEART).size(18)).style(<TransparentStyle as Into<theme::Button>>::into(TransparentStyle)),)
             .spacing(20);
 
-        let ndt = NaiveDateTime::from_timestamp_opt(self.event.created_at as i64, 0)
-            .unwrap_or(NaiveDateTime::MIN);
-        let dt: DateTime<Utc> = DateTime::from_naive_utc_and_offset(ndt, Utc);
+        let dt: DateTime<Utc> = DateTime::from_timestamp(self.event.created_at as i64, 0).unwrap_or(DateTime::<Utc>::MIN_UTC);
 
         let post = Column::new()
             .push(Row::new().push(Text::new(display_name)))
