@@ -23,8 +23,8 @@ impl button::StyleSheet for ActiveStyle {
             text_color: WHITE,
             border: Border {
                 width: 1.0,
-                color: PRIMARY,
-                radius: Radius::default(),
+                color: WHITE,
+                radius: Radius::from(10),
             },
             shadow: Shadow::default(),
         }
@@ -48,9 +48,9 @@ impl button::StyleSheet for TransparentStyle {
             background: Some(Background::Color(TRANSPARENT)),
             text_color: WHITE,
             border: Border {
-                width: 1.0,
-                color: PRIMARY,
-                radius: Radius::default(),
+                width: 10.0,
+                color: WHITE,
+                radius: Radius::from(10),
             },
             shadow: Shadow::default(),
         }
