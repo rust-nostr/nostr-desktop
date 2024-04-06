@@ -3,7 +3,7 @@
 
 use iced::alignment::Horizontal;
 use iced::widget::{Button, Container, Row};
-use iced::Length;
+use iced::{theme, Length};
 
 use crate::component::Icon;
 use crate::message::Message;
@@ -19,12 +19,12 @@ impl Navbar {
             .push(
                 Button::new(Icon::view(&NOTIFICATION))
                     .on_press(Message::SetDashboardStage(Stage::Notifications))
-                    .style(TransparentStyle.into()),
+                    .style(<TransparentStyle as Into<theme::Button>>::into(TransparentStyle)),
             )
             .push(
                 Button::new(Icon::view(&LOCK))
                     .on_press(Message::Lock)
-                    .style(TransparentStyle.into()),
+                    .style(<TransparentStyle as Into<theme::Button>>::into(TransparentStyle)),
             )
             .spacing(15);
         Container::new(content)

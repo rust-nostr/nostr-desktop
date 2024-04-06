@@ -43,12 +43,12 @@ impl Sidebar {
         sidebar(
             Container::new(
                 Column::new()
-                    .push(Space::with_height(Length::Units(30)))
+                    .push(Space::with_height(Length::Fixed(30.0)))
                     .push(title)
-                    .push(Space::with_height(Length::Units(30)))
+                    .push(Space::with_height(Length::Fixed(30.0)))
                     .padding(15),
             )
-            .width(Length::Units(BUTTON_SIZE))
+            .width(Length::Fixed(BUTTON_SIZE))
             .center_x(),
             sidebar_menu(vec![
                 home_button,
@@ -59,7 +59,7 @@ impl Sidebar {
                 setting_button,
             ]),
             sidebar_menu(vec![Container::new(version)
-                .width(Length::Units(BUTTON_SIZE))
+                .width(Length::Fixed(BUTTON_SIZE))
                 .center_x()]),
         )
     }

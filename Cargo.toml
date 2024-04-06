@@ -15,9 +15,8 @@ async-stream = "0.3.3"
 chrono = "0.4.23"
 dirs = "4.0.0"
 env_logger = "0.8.2"
-iced = { version = "0.6", default-features = false, features = ["image", "tokio", "glow"] }
-iced_futures = "0.5.1"
-iced_native = "0.7.0"
+iced = { version = "0.12.1", default-features = false, features = ["advanced", "image", "tokio"] }
+iced_futures = "0.12.0"
 log = "0.4.17"
 # nostr-sdk = "0.12"
 nostr-sdk = { git = "https://github.com/yukibtc/nostr-rs-sdk.git", rev = "7496698c2e040e34b70e804665b8b28aa3a989e7", features = ["sqlite"] }

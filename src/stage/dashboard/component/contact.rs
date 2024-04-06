@@ -33,8 +33,8 @@ impl Contact {
             .unwrap_or_else(|| UNKNOWN_IMG_PROFILE.to_owned());
         let image = Column::new().push(
             image::viewer(image)
-                .height(Length::Units(40))
-                .width(Length::Units(40)),
+                .height(Length::Fixed(40.0))
+                .width(Length::Fixed(40.0)),
         );
 
         let mut info = Column::new();

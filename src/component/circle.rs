@@ -1,10 +1,11 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced_native::layout::{self, Layout};
-use iced_native::renderer;
-use iced_native::widget::{self, Widget};
-use iced_native::{Color, Element, Length, Point, Rectangle, Size};
+use iced::advanced::layout::{self, Layout};
+use iced::advanced::renderer;
+use iced::advanced::widget::{self, Widget};
+use iced::mouse;
+use iced::{Border, Color, Element, Length, Rectangle, Size};
 
 use crate::theme::color::BLACK;
 
@@ -30,49 +31,53 @@ impl Circle {
     Circle::new(radius)
 } */
 
-impl<Message, Renderer> Widget<Message, Renderer> for Circle
-where
-    Renderer: renderer::Renderer,
-{
-    fn width(&self) -> Length {
-        Length::Shrink
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Circle
+    where
+        Renderer: renderer::Renderer,
+    {
+        fn size(&self) -> Size<Length> {
+            Size {
+                width: Length::Shrink,
+                height: Length::Shrink,
+            }
+        }
+
+        fn layout(
+            &self,
+            _tree: &mut widget::Tree,
+            _renderer: &Renderer,
+            _limits: &layout::Limits,
+        ) -> layout::Node {
+            layout::Node::new(Size::new(self.radius * 2.0, self.radius * 2.0))
+        }
+
+        fn draw(
+            &self,
+            _state: &widget::Tree,
+            renderer: &mut Renderer,
+            _theme: &Theme,
+            _style: &renderer::Style,
+            layout: Layout<'_>,
+            _cursor: mouse::Cursor,
+            _viewport: &Rectangle,
+        ) {
+            renderer.fill_quad(
+                renderer::Quad {
+                    bounds: layout.bounds(),
+                    border: Border::with_radius(self.radius),
+                    ..renderer::Quad::default()
+                },
+                self.color,
+            );
+        }
     }
 
-    fn height(&self) -> Length {
-        Length::Shrink
+    impl<'a, Message, Theme, Renderer> From<Circle>
+        for Element<'a, Message, Theme, Renderer>
+    where
+        Renderer: renderer::Renderer,
+    {
+        fn from(circle: Circle) -> Self {
+            Self::new(circle)
+        }
     }
-
-    fn layout(&self, _renderer: &Renderer, _limits: &layout::Limits) -> layout::Node {
-        layout::Node::new(Size::new(self.radius * 2.0, self.radius * 2.0))
-    }
-
-    fn draw(
-        &self,
-        _state: &widget::Tree,
-        renderer: &mut Renderer,
-        _theme: &Renderer::Theme,
-        _style: &renderer::Style,
-        layout: Layout<'_>,
-        _cursor_position: Point,
-        _viewport: &Rectangle,
-    ) {
-        renderer.fill_quad(
-            renderer::Quad {
-                bounds: layout.bounds(),
-                border_radius: self.radius.into(),
-                border_width: 0.0,
-                border_color: Color::TRANSPARENT,
-            },
-            self.color,
-        );
-    }
-}
-
-impl<'a, Message, Renderer> From<Circle> for Element<'a, Message, Renderer>
-where
-    Renderer: renderer::Renderer,
-{
-    fn from(circle: Circle) -> Self {
-        Self::new(circle)
-    }
-}

@@ -15,4 +15,4 @@ pub use self::explore::{ExploreMessage, ExploreState};
 pub use self::home::{HomeMessage, HomeState};
 pub use self::notifications::{NotificationsMessage, NotificationsState};
 pub use self::profile::{ProfileMessage, ProfileState};
-pub use self::setting::{RelaysMessage, RelaysState, SettingMessage, SettingState};
+pub use self::setting::{RelaysState, SettingMessage, SettingState};

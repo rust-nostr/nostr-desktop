@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use iced::widget::scrollable;
 use nostr_sdk::nostr::Event;
 use nostr_sdk::Client;
 
@@ -26,7 +27,7 @@ pub enum DashboardMessage {
 pub enum Message {
     Tick,
     Sync(Event),
-    Scrolled(f32),
+    Scrolled(scrollable::Viewport),
     SetAuthStage(auth::Stage),
     SetDashboardStage(dashboard::Stage),
     LoginResult(Client),

@@ -2,6 +2,8 @@
 // Distributed under the MIT software license
 
 use async_stream::stream;
+use iced::advanced::subscription::{EventStream, Recipe};
+use iced::advanced::Hasher;
 use iced::Subscription;
 use iced_futures::BoxStream;
 use nostr_sdk::nostr::Event;
@@ -16,18 +18,16 @@ pub struct NostrSync {
     join: Option<tokio::task::JoinHandle<()>>,
 }
 
-impl<H, I> iced::subscription::Recipe<H, I> for NostrSync
-where
-    H: std::hash::Hasher,
+impl Recipe for NostrSync
 {
     type Output = Event;
 
-    fn hash(&self, state: &mut H) {
+    fn hash(&self, state: &mut Hasher) {
         use std::hash::Hash;
         std::any::TypeId::of::<Self>().hash(state);
     }
 
-    fn stream(mut self: Box<Self>, _input: BoxStream<I>) -> BoxStream<Self::Output> {
+    fn stream(mut self: Box<Self>, _input: EventStream) -> BoxStream<Self::Output> {
         let (sender, mut receiver) = mpsc::unbounded_channel();
 
         let client = self.client.clone();

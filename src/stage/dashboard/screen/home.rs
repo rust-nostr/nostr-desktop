@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::widget::Column;
+use iced::widget::{scrollable, Column};
 use iced::{Command, Element};
 use nostr_sdk::nostr::Event;
 
@@ -21,7 +21,7 @@ pub enum HomeMessage {
 #[derive(Clone, Default)]
 pub struct HomeState {
     loaded: bool,
-    latest_offset: f32,
+    latest_offset: scrollable::RelativeOffset,
     page: usize,
 }
 
@@ -29,7 +29,7 @@ impl HomeState {
     pub fn new() -> Self {
         Self {
             loaded: false,
-            latest_offset: 0.0,
+            latest_offset: scrollable::RelativeOffset { x: 0.0, y: 0.0 },
             page: 1,
         }
     }
@@ -52,8 +52,8 @@ impl State for HomeState {
 
         match message {
             Message::Scrolled(offset) => {
-                self.latest_offset = offset;
-                if offset > 0.9 {
+                self.latest_offset = offset.relative_offset();
+                if offset.relative_offset().y > 0.9 {
                     self.page += 1;
                 }
             }

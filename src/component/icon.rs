@@ -5,18 +5,13 @@ use iced::alignment::Horizontal;
 use iced::widget::Text;
 use iced::{Font, Length};
 
-const ICONS: Font = Font::External {
-    name: "Icons",
-    bytes: include_bytes!("../../static/icons/bootstrap-icons.otf"),
-};
-
 pub struct Icon;
 
 impl Icon {
     pub fn view(unicode: &'static char) -> Text<'static> {
         Text::new(unicode.to_string())
-            .font(ICONS)
-            .width(Length::Units(20))
+            .font(Font::MONOSPACE)
+            .width(Length::Fixed(20.0))
             .horizontal_alignment(Horizontal::Center)
             .size(20)
     }

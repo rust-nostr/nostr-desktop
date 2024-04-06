@@ -66,12 +66,11 @@ impl State for LoginState {
     }
 
     fn view(&self, _ctx: &Context) -> Element<Message> {
-        let text_input = text_input("Secret key", &self.secret_key, |s| {
-            Message::Login(LoginMessage::SecretKeyChanged(s))
-        })
-        .on_submit(Message::Login(LoginMessage::ButtonPressed))
-        .padding(10)
-        .size(20);
+        let text_input = text_input("Secret key", &self.secret_key)
+            .on_input(|secret_key| Message::Login(LoginMessage::SecretKeyChanged(secret_key)))
+            .on_submit(Message::Login(LoginMessage::ButtonPressed))
+            .padding(10)
+            .size(20);
 
         let button = button("Login")
             .padding(10)

@@ -165,7 +165,7 @@ impl State for RelaysState {
             RelaysMessage::AddRelay,
         )));
 
-        let relay_url_input = TextInput::new("Relay url", &self.relay_url, |s| {
+        let relay_url_input = TextInput::new("Relay url", &self.relay_url).on_input( |s| {
             Message::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(
                 RelaysMessage::RelayUrlChanged(s),
             )))
@@ -174,13 +174,13 @@ impl State for RelaysState {
         .padding(10)
         .size(20);
 
-        let use_proxy_checkbox = Checkbox::new(self.use_proxy, "Use proxy", |value| {
+        let use_proxy_checkbox = Checkbox::new("Use proxy", self.use_proxy).on_toggle( |value| {
             Message::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(
                 RelaysMessage::ProxyToggled(value),
             )))
         });
 
-        let proxy_input = TextInput::new("Socks5 proxy (ex. 127.0.0.1:9050)", &self.proxy, |s| {
+        let proxy_input = TextInput::new("Socks5 proxy (ex. 127.0.0.1:9050)", &self.proxy).on_input( |s| {
             Message::Dashboard(DashboardMessage::Setting(SettingMessage::Relays(
                 RelaysMessage::ProxyChanged(s),
             )))

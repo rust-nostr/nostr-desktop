@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use iced::{executor, Application, Command, Element, Settings, Subscription, Theme};
+use iced::{executor, Application, Command, Element, Settings, Size, Subscription, Theme};
 use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;
 
@@ -20,7 +20,7 @@ static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start 
 pub fn main() -> iced::Result {
     env_logger::init();
     let mut settings = Settings::default();
-    settings.window.min_size = Some((600, 600));
+    settings.window.min_size = Some(Size { width: 600.0, height: 600.0 });
     NostrDesktop::run(settings)
 }
 

@@ -1,14 +1,15 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use iced::border::Radius;
 use iced::widget::{button, Button, Container, Row, Text};
-use iced::{theme, Alignment, Background, Length, Theme, Vector};
+use iced::{theme, Alignment, Background, Border, Length, Shadow, Theme, Vector};
 
 use crate::message::Message;
 use crate::stage::dashboard::{Context, Stage};
 use crate::theme::color::{PRIMARY, TRANSPARENT, WHITE};
 
-pub const BUTTON_SIZE: u16 = 180;
+pub const BUTTON_SIZE: f32 = 180.0;
 
 pub struct ActiveStyle;
 
@@ -19,10 +20,13 @@ impl button::StyleSheet for ActiveStyle {
         button::Appearance {
             shadow_offset: Vector::default(),
             background: Some(Background::Color(PRIMARY)),
-            border_radius: 10.0,
-            border_width: 1.0,
-            border_color: WHITE,
             text_color: WHITE,
+            border: Border {
+                width: 1.0,
+                color: PRIMARY,
+                radius: Radius::default(),
+            },
+            shadow: Shadow::default(),
         }
     }
 }
@@ -42,10 +46,13 @@ impl button::StyleSheet for TransparentStyle {
         button::Appearance {
             shadow_offset: Vector::default(),
             background: Some(Background::Color(TRANSPARENT)),
-            border_radius: 10.0,
-            border_width: 1.0,
-            border_color: WHITE,
             text_color: WHITE,
+            border: Border {
+                width: 1.0,
+                color: PRIMARY,
+                radius: Radius::default(),
+            },
+            shadow: Shadow::default(),
         }
     }
 }
@@ -68,7 +75,7 @@ impl<'a> SidebarButton<'a> {
     }
 
     pub fn view(&self, ctx: &Context, stage: Stage) -> Container<'a, Message> {
-        let style = if ctx.stage.eq(&stage) {
+        let style: theme::Button = if ctx.stage.eq(&stage) {
             ActiveStyle.into()
         } else {
             TransparentStyle.into()
@@ -89,7 +96,7 @@ impl<'a> SidebarButton<'a> {
         Container::new(
             Button::new(content)
                 .on_press(Message::SetDashboardStage(stage))
-                .width(Length::Units(BUTTON_SIZE))
+                .width(Length::Fixed(BUTTON_SIZE))
                 .style(style),
         )
     }
