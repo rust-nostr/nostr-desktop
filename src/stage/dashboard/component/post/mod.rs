@@ -66,12 +66,31 @@ impl Post {
             }
         }
         let buttons = Row::new()
-            .push(Button::new(Icon::view(&CHAT).size(18)).style(<TransparentStyle as Into<theme::Button>>::into(TransparentStyle)),)
-            .push(Button::new(Icon::view(&REPEAT).size(18)).style(<TransparentStyle as Into<theme::Button>>::into(TransparentStyle)),)
-            .push(Button::new(Icon::view(&HEART).size(18)).style(<TransparentStyle as Into<theme::Button>>::into(TransparentStyle)),)
+            .push(
+                Button::new(Icon::view(&CHAT).size(18)).style(<TransparentStyle as Into<
+                    theme::Button,
+                >>::into(
+                    TransparentStyle
+                )),
+            )
+            .push(
+                Button::new(Icon::view(&REPEAT).size(18)).style(<TransparentStyle as Into<
+                    theme::Button,
+                >>::into(
+                    TransparentStyle
+                )),
+            )
+            .push(
+                Button::new(Icon::view(&HEART).size(18)).style(<TransparentStyle as Into<
+                    theme::Button,
+                >>::into(
+                    TransparentStyle
+                )),
+            )
             .spacing(20);
 
-        let dt: DateTime<Utc> = DateTime::from_timestamp(self.event.created_at as i64, 0).unwrap_or(DateTime::<Utc>::MIN_UTC);
+        let dt: DateTime<Utc> = DateTime::from_timestamp(self.event.created_at as i64, 0)
+            .unwrap_or(DateTime::<Utc>::MIN_UTC);
 
         let post = Column::new()
             .push(Row::new().push(Text::new(display_name)))

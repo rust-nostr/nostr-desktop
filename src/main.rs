@@ -20,7 +20,10 @@ static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start 
 pub fn main() -> iced::Result {
     env_logger::init();
     let mut settings = Settings::default();
-    settings.window.min_size = Some(Size { width: 600.0, height: 600.0 });
+    settings.window.min_size = Some(Size {
+        width: 600.0,
+        height: 600.0,
+    });
     NostrDesktop::run(settings)
 }
 

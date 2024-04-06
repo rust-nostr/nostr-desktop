@@ -18,8 +18,7 @@ pub struct NostrSync {
     join: Option<tokio::task::JoinHandle<()>>,
 }
 
-impl Recipe for NostrSync
-{
+impl Recipe for NostrSync {
     type Output = Event;
 
     fn hash(&self, state: &mut Hasher) {

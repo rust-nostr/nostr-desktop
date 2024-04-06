@@ -19,12 +19,16 @@ impl Navbar {
             .push(
                 Button::new(Icon::view(&NOTIFICATION))
                     .on_press(Message::SetDashboardStage(Stage::Notifications))
-                    .style(<TransparentStyle as Into<theme::Button>>::into(TransparentStyle)),
+                    .style(<TransparentStyle as Into<theme::Button>>::into(
+                        TransparentStyle,
+                    )),
             )
             .push(
                 Button::new(Icon::view(&LOCK))
                     .on_press(Message::Lock)
-                    .style(<TransparentStyle as Into<theme::Button>>::into(TransparentStyle)),
+                    .style(<TransparentStyle as Into<theme::Button>>::into(
+                        TransparentStyle,
+                    )),
             )
             .spacing(15);
         Container::new(content)
