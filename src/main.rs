@@ -13,13 +13,18 @@ mod sync;
 mod theme;
 mod util;
 
+use theme::font::BOOTSTRAP_ICONS_BYTES;
+
 use self::message::Message;
 
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));
 
 pub fn main() -> iced::Result {
     env_logger::init();
-    let mut settings = Settings::default();
+    let mut settings = Settings {
+        fonts: vec![BOOTSTRAP_ICONS_BYTES.into()],
+        ..Settings::default()
+    };
     settings.window.min_size = Some(Size {
         width: 600.0,
         height: 600.0,

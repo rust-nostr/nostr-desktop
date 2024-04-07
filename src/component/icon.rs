@@ -10,7 +10,7 @@ pub struct Icon;
 impl Icon {
     pub fn view(unicode: &'static char) -> Text<'static> {
         Text::new(unicode.to_string())
-            .font(Font::MONOSPACE)
+            .font(Font::with_name("bootstrap-icons"))
             .width(Length::Fixed(20.0))
             .horizontal_alignment(Horizontal::Center)
             .size(20)
