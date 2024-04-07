@@ -7,8 +7,7 @@ use iced::advanced::Hasher;
 use iced::Subscription;
 use iced_futures::BoxStream;
 use nostr_sdk::nostr::Event;
-use nostr_sdk::Client;
-use nostr_sdk::RelayPoolNotifications;
+use nostr_sdk::{Client, RelayPoolNotifications};
 use tokio::sync::mpsc;
 
 use crate::RUNTIME;

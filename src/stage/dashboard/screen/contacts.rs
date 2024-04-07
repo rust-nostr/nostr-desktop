@@ -8,8 +8,7 @@ use iced::{Command, Element};
 use nostr_sdk::nostr::secp256k1::XOnlyPublicKey;
 
 use crate::message::{DashboardMessage, Message};
-use crate::stage::dashboard::component::Contact;
-use crate::stage::dashboard::component::Dashboard;
+use crate::stage::dashboard::component::{Contact, Dashboard};
 use crate::stage::dashboard::{Context, State};
 
 #[derive(Debug, Clone)]

@@ -8,9 +8,9 @@ pub mod screen;
 
 pub use self::context::{Context, Stage};
 use self::screen::LoginState;
-use crate::{message::Message, NostrDesktop};
-
 use super::App;
+use crate::message::Message;
+use crate::NostrDesktop;
 
 pub struct Auth {
     state: Box<dyn State>,

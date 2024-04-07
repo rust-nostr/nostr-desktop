@@ -8,7 +8,7 @@ homepage = "https://github.com/yukibtc/nostr-desktop"
 repository = "https://github.com/yukibtc/nostr-desktop.git"
 license = "MIT"
 keywords = ["nostr", "nostr-sdk", "client", "gui"]
-categories = ["GUI"]
+categories = ["gui"]
 
 [dependencies]
 async-stream = "0.3.3"
