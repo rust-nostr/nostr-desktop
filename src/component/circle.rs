@@ -63,7 +63,11 @@ where
         renderer.fill_quad(
             renderer::Quad {
                 bounds: layout.bounds(),
-                border: Border::with_radius(self.radius),
+                border: Border {
+                    width: 0.0,
+                    color: Color::TRANSPARENT,
+                    radius: self.radius.into(),
+                },
                 ..renderer::Quad::default()
             },
             self.color,
