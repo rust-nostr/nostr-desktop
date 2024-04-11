@@ -48,7 +48,7 @@ impl button::StyleSheet for TransparentStyle {
             background: Some(Background::Color(TRANSPARENT)),
             text_color: WHITE,
             border: Border {
-                width: 10.0,
+                width: 1.0,
                 color: WHITE,
                 radius: Radius::from(10),
             },
