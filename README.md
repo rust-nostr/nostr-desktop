@@ -1,4 +1,4 @@
-# nostr-desktop
+# nostr-desktop [![CI](https://github.com/RandyMcMillan/nostr-desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/RandyMcMillan/nostr-desktop/actions/workflows/ci.yml)
 
 **Looking for a better name**
 

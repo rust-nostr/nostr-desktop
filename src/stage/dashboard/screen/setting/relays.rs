@@ -108,7 +108,7 @@ impl State for RelaysState {
                     return Command::perform(
                         async move {
                             if let Err(e) = client.remove_relay(&url).await {
-                                log::error!("Impossible to remove {}: {}", url, e.to_string());
+                                log::error!("Impossible to remove {}: {}", url, e);
                             }
                         },
                         |_| RelaysMessage::UpdateRelays.into(),
@@ -118,7 +118,7 @@ impl State for RelaysState {
                     return Command::perform(
                         async move {
                             if let Err(e) = client.add_relay(url.clone(), proxy).await {
-                                log::error!("Impossible to add {}: {}", url, e.to_string());
+                                log::error!("Impossible to add {}: {}", url, e);
                             }
                             client.connect().await;
                         },
@@ -129,7 +129,7 @@ impl State for RelaysState {
                     return Command::perform(
                         async move {
                             if let Err(e) = client.disconnect_relay(&url).await {
-                                log::error!("Impossible to disconnect {}: {}", url, e.to_string());
+                                log::error!("Impossible to disconnect {}: {}", url, e);
                             }
                         },
                         |_| RelaysMessage::UpdateRelays.into(),

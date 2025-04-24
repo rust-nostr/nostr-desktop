@@ -114,9 +114,9 @@ pub async fn fetch_image(url: String) -> Option<image::Handle> {
     match reqwest::get(url).await {
         Ok(res) => match res.bytes().await {
             Ok(bytes) => return Some(image::Handle::from_memory(bytes.as_ref().to_vec())),
-            Err(e) => log::error!("Impossible to fetch image bytes: {}", e.to_string()),
+            Err(e) => log::error!("Impossible to fetch image bytes: {}", e),
         },
-        Err(e) => log::error!("Impossible to fetch image: {}", e.to_string()),
+        Err(e) => log::error!("Impossible to fetch image: {}", e),
     }
     None
 }

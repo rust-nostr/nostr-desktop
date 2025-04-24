@@ -74,7 +74,7 @@ where
         );
     }
 }
-
+#[allow(clippy::needless_lifetimes)]
 impl<'a, Message, Theme, Renderer> From<Circle> for Element<'a, Message, Theme, Renderer>
 where
     Renderer: renderer::Renderer,

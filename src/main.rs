@@ -85,7 +85,7 @@ impl Application for NostrDesktop {
                     Command::perform(
                         async move {
                             if let Err(e) = client.shutdown().await {
-                                log::error!("Impossible to shutdown client: {}", e.to_string());
+                                log::error!("Impossible to shutdown client: {}", e);
                             }
                         },
                         |_| Message::Tick,

@@ -60,7 +60,7 @@ impl App {
             Command::perform(
                 async move {
                     if let Err(e) = client.restore_relays().await {
-                        log::error!("Impossible to load relays: {}", e.to_string());
+                        log::error!("Impossible to load relays: {}", e);
                     }
                     client.connect().await;
                 },

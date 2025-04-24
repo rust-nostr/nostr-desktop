@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ "**" ]
   pull_request:
     branches: [ master ]
 
@@ -17,17 +17,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Install just
-        run: cargo install just
+        run:
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash && cargo binstall just
+          cargo-binstall --no-confirm just
+
       - name: Check
         run: just check-fmt
 
   check:
+    needs: fmt
     name: Check crate
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v3
     - name: Install just
-      run: cargo install just
+      run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash && cargo binstall just
+          cargo-binstall --no-confirm just
     - name: Check
       run: just check-crate
